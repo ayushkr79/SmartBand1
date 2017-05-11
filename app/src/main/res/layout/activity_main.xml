@@ -1,18 +1,100 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="in.iitd.assistech.smartband.MainActivity">
 
+    <Button
+        android:id="@+id/weightButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginLeft="5dp"
+        android:onClick="loadWeight"
+        android:text="Weights"
+        android:visibility="visible"
+        tools:layout_editor_absoluteX="5dp"
+        tools:layout_editor_absoluteY="16dp" />
+
     <TextView
+        android:id="@+id/inputWeight"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_below="@id/weightButton"
+        android:text="HELLO WORLD"
+        android:visibility="visible"
+        tools:layout_editor_absoluteX="5dp"
+        tools:layout_editor_absoluteY="95dp" />
 
-</android.support.constraint.ConstraintLayout>
+    <Button
+        android:id="@+id/outputButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/inputWeight"
+        android:layout_marginLeft="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_toEndOf="@+id/inputWeight"
+        android:layout_toRightOf="@+id/inputWeight"
+        android:onClick="calcOutput"
+        android:text="Output" />
+
+    <TextView
+        android:id="@+id/hornText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/weightButton"
+        android:layout_alignStart="@+id/weightButton"
+        android:layout_centerVertical="true"
+        android:text="Vehicle Horn" />
+
+    <TextView
+        android:id="@+id/hornValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/cryValue"
+        android:layout_alignStart="@+id/cryValue"
+        android:layout_centerVertical="true"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/cryText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/hornText"
+        android:layout_alignStart="@+id/hornText"
+        android:layout_below="@+id/hornText"
+        android:layout_marginTop="48dp"
+        android:text="Baby Cry" />
+
+    <TextView
+        android:id="@+id/cryValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/outputButton"
+        android:layout_alignStart="@+id/outputButton"
+        android:layout_alignTop="@+id/cryText"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/ambientText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/cryText"
+        android:layout_marginTop="41dp"
+        android:text="Ambient Sound" />
+
+    <TextView
+        android:id="@+id/ambientValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/cryValue"
+        android:layout_alignStart="@+id/cryValue"
+        android:layout_alignTop="@+id/ambientText"
+        android:text="TextView" />
+
+</RelativeLayout>
