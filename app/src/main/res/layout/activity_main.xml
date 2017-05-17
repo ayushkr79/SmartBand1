@@ -97,4 +97,16 @@
         android:layout_alignTop="@+id/ambientText"
         android:text="TextView" />
 
+    <Button
+        android:id="@+id/processAudioButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/outputButton"
+        android:layout_marginLeft="35dp"
+        android:layout_marginStart="35dp"
+        android:layout_toEndOf="@+id/outputButton"
+        android:layout_toRightOf="@+id/outputButton"
+        android:onClick="processAudioEvent"
+        android:text="Process Audio" />
+
 </RelativeLayout>

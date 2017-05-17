@@ -3,6 +3,7 @@ package in.iitd.assistech.smartband;
 import android.content.res.AssetManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
 
@@ -15,10 +16,15 @@ import jxl.Workbook;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "Main_Activity";
+
     static double[][] inputWeights;
     static double[][] layerWeights;
     static double[][] inputBias;
     static double[][] outputBias;
+
+    static double[][] meanTrain;
+    static double[][] devTrain;
 
     double[][] inputFeat;
 
@@ -26,11 +32,39 @@ public class MainActivity extends AppCompatActivity {
     double cryProb;
     double ambientProb;
 
+    private static int TW = 50; //analysis frame duration (ms)
+    private static int TS = 25; //analysis frame shit (ms)
+    private static double alpha = 0.97; //pre-emphasis factor
+    private static int[] range = {300, 5000}; // frequency range
+    private static int M = 26; //number of filterbank channels
+    private static int N = 20; // number of mfcc
+    private static int L = 22; //liftering coefficient
+
+    MFCCMatlab mfcc; // instance of class MFCCMatlab
+    double[] speech; //TODO: audio as array. Currently reading from an array in sheet
+    //TODO: Change the sampling frequency. This is for testing only
+    int sampFreq = 48000; // FS - sampling frequency of audio
+
+    /**Hurray**/
+    /**The final shit that we need s here**/
+    double[] featSound; //160 features of 250 ms audio
+    /****/
+
+    TimingLogger timings;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        timings = new TimingLogger(TAG, "PrepNN :");
+        prepNN();
+        timings.addSplit("After PrepNN");
+        timings.dumpToLog();
+    }
+
+    //Load the weights and bias in the form of matrix from sheet in Assets Folder
+    private void prepNN() {
         try{
             AssetManager am = getAssets();
             InputStream is = am.open("NN_Weights.xls");
@@ -38,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
 
             Sheet inputWeightSheet = wb.getSheet("InputWeight");
             int inputWeightSheetRows = inputWeightSheet.getRows();
-            System.out.println(inputWeightSheetRows);
             int inputWeightSheetColumns = inputWeightSheet.getColumns();
             inputWeights = new double[inputWeightSheetRows][inputWeightSheetColumns];
 
@@ -85,6 +118,31 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
+            Sheet meanTrainSheet = wb.getSheet("MeanTrain");
+            int meanTrainSheetRows = meanTrainSheet.getRows();
+            int meanTrainSheetColumns = meanTrainSheet.getColumns();
+            meanTrain = new double[meanTrainSheetRows][meanTrainSheetColumns];
+
+            for (int i=0; i<meanTrainSheetRows; i++){
+                for (int j=0; j<meanTrainSheetColumns; j++){
+                    Cell z = meanTrainSheet.getCell(j, i);
+                    meanTrain[i][j] = Double.parseDouble(z.getContents());
+                }
+            }
+
+            Sheet devTrainSheet = wb.getSheet("DevTrain");
+            int devTrainSheetRows = devTrainSheet.getRows();
+            int devTrainSheetColumns = devTrainSheet.getColumns();
+            devTrain = new double[devTrainSheetRows][devTrainSheetColumns];
+
+            for (int i=0; i<devTrainSheetRows; i++){
+                for (int j=0; j<devTrainSheetColumns; j++){
+                    Cell z = devTrainSheet.getCell(j, i);
+                    devTrain[i][j] = Double.parseDouble(z.getContents());
+                }
+            }
+
+
             Sheet inputFeatSheet = wb.getSheet("InputFeat");
             int inputFeatSheetRows = inputFeatSheet.getRows();
             int inputFeatSheetColumns = inputFeatSheet.getColumns();
@@ -96,9 +154,6 @@ public class MainActivity extends AppCompatActivity {
                     inputFeat[i][j] = Double.parseDouble(z.getContents());
                 }
             }
-
-            System.out.println("arr: " + Arrays.toString(inputBias));
-            System.out.println("inputWeightSize: "+ Integer.toString(inputBias.length));
         } catch (Exception e){
         }
     }
@@ -107,16 +162,60 @@ public class MainActivity extends AppCompatActivity {
         //displayWeight(inputFeat);
     }
 
+    //TODO: Add the process and handle onClick of Button 3
+    public void processAudioEvent(View v){
+        /*
+        speech = new double[inputFeat.length];
+        Thread thread2 = new Thread(){
+            @Override
+            public void run() {
+
+            }
+        };
+        thread2.start();
+        Log.e("THREAD 1 !!!!!!", "SO WHAT");*/
+        speech = new double[inputFeat.length];
+        for(int i=0; i<inputFeat.length; i++){
+            speech[i] = inputFeat[i][0];
+        }
+        //System.out.println("Main Activity line 153 - arr: " + Double.toString(speech[20]));
+        featSound = new double[160];
+        mfcc = new MFCCMatlab(speech, sampFreq, TW, TS, alpha, range, M, N, L);
+        featSound = mfcc.getFeatSound();
+        System.out.println(Arrays.toString(featSound));
+        displayWeight(featSound);
+    }
+
+    private double[] mat2array(double[][] input) {
+        double[][] matrix = transpose(input);
+        double[] array = new double[matrix.length * matrix[0].length];
+        for(int i = 0; i < matrix.length; i++) {
+            double[] row = matrix[i];
+            for(int j = 0; j < row.length; j++) {
+                double number = matrix[i][j];
+                array[i*row.length+j] = number;
+            }
+        }
+        return array;
+    }
+
     public void calcOutput(View v){
         TextView hornValue = (TextView)findViewById(R.id.hornValue);
         TextView cryValue = (TextView)findViewById(R.id.cryValue);
         TextView ambientValue = (TextView)findViewById(R.id.ambientValue);
 
+        //TODO: Check that inputFeat is 160x1 vector. Replace it with featSound at later stage.
+        //TODO: Uncomment the code in for loop
+        //Normalize input feature with training mean and deviation
+        for (int i=0; i<featSound.length; i++){
+            featSound[i] = (featSound[i]-meanTrain[i][0])/devTrain[i][0];
+        }
+
         double[] hiddenNodes = new double[inputWeights.length];
         for (int i=0; i<inputWeights.length; i++){
             double sum = 0;
             for (int j=0; j<inputWeights[0].length; j++){
-                sum += inputWeights[i][j]*inputFeat[j][0];
+                sum += inputWeights[i][j]*featSound[j];
             }
             hiddenNodes[i] = tansig(sum + inputBias[i][0]);
         }
@@ -134,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
 
         double sum = 0.0;
         for (int i=0; i<outputNodes.length; i++){
-            sum += Math.exp(Math.abs(outputNodes[i]));
+            sum += Math.exp(outputNodes[i]);
         }
 
         for (int i=0; i<outputNodes.length; i++){
@@ -142,8 +241,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         hornProb = outputNodes[0];
-        cryProb = outputNodes[2];
         ambientProb = outputNodes[1];
+        cryProb = outputNodes[2];
+
+        for(int i=0; i<outputNodes.length; i++){
+            System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
+        }
 
         hornValue.setText(Double.toString(hornProb));
         cryValue.setText(Double.toString(cryProb));
@@ -155,8 +258,8 @@ public class MainActivity extends AppCompatActivity {
         //inputWeight.setText(Double.toString(value[0][0]));
         for(int i=0; i<value.length; i++){
             //for(int j=0; j<value.length; j++){
-                inputWeight.append(Double.toString(value[i]));
-                inputWeight.append("\n");
+            inputWeight.append(Double.toString(value[i]));
+            inputWeight.append("\n");
             //}
         }
     }
@@ -166,9 +269,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private double softmax(double outputNode, double sum) {
-        double temp = Math.exp(Math.abs(outputNode));
-        System.out.println("temp " + Double.toString(outputNode)+ ","+ Double.toString(temp));
-        System.out.println("SUM " + Double.toString(sum));
+        double temp = Math.exp(outputNode);
+        System.out.println("Main Activity line 268 - temp " + Double.toString(outputNode)+ ","+ Double.toString(temp));
+        System.out.println("Main Activity line 269 - SUM " + Double.toString(sum));
         return (temp/sum);
+    }
+
+    private double[][] transpose(double[][] input){
+        double[][] output = new double[input[0].length][input.length];
+        for(int i=0; i<input[0].length; i++){
+            for(int j=0; j<input.length; j++){
+                output[i][j] = input[j][i];
+            }
+        }
+        return output;
     }
 }
