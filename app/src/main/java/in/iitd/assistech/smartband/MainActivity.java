@@ -13,6 +13,7 @@ import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
@@ -85,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
     int BufferElements2Rec;
     int BytesPerElement;
     short[] sData;
+
+    private static final String FILENAME = "sound1.txt";
     /**---------------------------**/
 
     double[] speech; //TODO: audio as array. Currently reading from an array in sheet
@@ -236,9 +239,9 @@ public class MainActivity extends AppCompatActivity {
                     sData = new short[BufferElements2Rec];
                     // gets the voice output from microphone to byte format
                     recorder.read(sData, 0, BufferElements2Rec);
-                    System.out.println("Short writing to file" + Arrays.toString(sData));
-                    newProcessAudioMic(sData);
-                    isRecording = false;
+                    //System.out.println("Short writing to file" + Arrays.toString(sData));
+
+                    //createFile(FILENAME, Arrays.toString(sData));
                 }
             }
         }, "AudioRecorder Thread");
@@ -270,6 +273,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     /**-------------------------------**/
+
+    public void createFile(String sFileName, String sBody){
+        try
+        {
+            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
+            if (!root.exists()) {
+                root.mkdirs();
+            }
+            System.out.println(root.getAbsolutePath());
+            File gpxfile = new File(root, sFileName);
+            FileWriter writer = new FileWriter(gpxfile);
+            writer.append(sBody);
+            writer.flush();
+            writer.close();
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+
+        }
+    }
 
     public void loadWeight(View v){
         //displayWeight(inputFeat);
