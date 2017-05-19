@@ -23,6 +23,7 @@ public class MFCCMatlab {
     private static final String TAG = "MFCCMatlab";
 
     static double[] speech; //Input speech signal as vector
+    static short[] speechShort; //short[] input signal, no need to multiply with 2^15
     static int FS; //Sampling Frequency
     static int TW; //Analysis frame duration
     static int TS; //Analysis frame shift
@@ -67,23 +68,39 @@ public class MFCCMatlab {
 
         K = nfft/2 + 1;
 
-        /*
-        System.out.println("MFCCMatlab line 59: --------------");
-        System.out.println("speech[0] : " + speech[0]);
-        System.out.println("FS : " + FS);
-        System.out.println("TW : " + TW);
-        System.out.println("TS : " + TS);
-        System.out.println("alpha : " + alpha);
-        System.out.println("range :" + range[0] + ", " + range[1]);
-        System.out.println("M : " + M);
-        System.out.println("N : " + N);
-        System.out.println("L : " + L);
+        TimingLogger timingsMFCC = new TimingLogger(TAG, "MFCCMatlab setter");
+        //TODO: Minimise time of these two next line
 
-        System.out.println("NW : " + NW);
-        System.out.println("NS : " + NS);
-        System.out.println("nfft : "   + nfft);
-        System.out.println("K : " + K);
-        */
+        process();
+
+        timingsMFCC.addSplit("process in MFCCMatlab");
+
+        calcFeatSound();
+
+        timingsMFCC.addSplit("calcFeatSound in MFCCMatlab");
+        timingsMFCC.dumpToLog();
+    }
+
+    public MFCCMatlab(short[] speech, int FS, int TW, int TS, double alpha,
+                      int[] range, int M, int N, int L){
+        this.speechShort = speech;
+        this.FS = FS;
+        this.TW = TW;
+        this.TS = TS;
+        this.alpha = alpha;
+        this.range = range;
+        this.M = M;
+        this.N = N;
+        this.L = L;
+
+        NW = (int) Math.round(Math.pow(10, -3)*TW*FS);
+        NS = (int) Math.round(Math.pow(10, -3)*TS*FS);
+
+        //next power of 2 greater than NW
+        nfft = NW == 0 ? 0 : 32 - Integer.numberOfLeadingZeros(NW - 1);
+        nfft = (int)Math.pow(2, nfft);
+
+        K = nfft/2 + 1;
 
         TimingLogger timingsMFCC = new TimingLogger(TAG, "MFCCMatlab setter");
         //TODO: Minimise time of these two next line
@@ -96,31 +113,21 @@ public class MFCCMatlab {
 
         timingsMFCC.addSplit("calcFeatSound in MFCCMatlab");
         timingsMFCC.dumpToLog();
-
-
-        /*
-        System.out.println();
-        System.out.println("These are FeatSound!!!!!!!!!!");
-        System.out.println(Arrays.toString(getFeatSound()));
-        Log.e("Beware", "This is it");
-        System.out.println("These are CC values!!!!!!!!!!");
-        System.out.println(Arrays.toString(CC[0]));
-        */
     }
 
-    public void process(){
+    public void process() {
         TimingLogger timingMfccProcess = new TimingLogger(TAG, "MFCCMatlab - process");
-        if(maximum(speech) <= 1){
-            for(int i=0; i<speech.length; i++){
-                speech[i] = speech[i]*Math.pow(2, 15);
+        /*if (maximum(speech) <= 1) {
+            for (int i = 0; i < speech.length; i++) {
+                speech[i] = speech[i] * Math.pow(2, 15);
             }
-        }
+        }*/
 
         timingMfccProcess.addSplit("Check magnitude of speech");
 
         /**speech = filter( [1 -alpha], 1, speech );**/
         double[] b = {1.0, -alpha};
-        speech = filter( b, 1.0, speech );
+        speech = filter(b, 1.0, speech);
 
         timingMfccProcess.addSplit("Method - filter");
 
@@ -132,6 +139,36 @@ public class MFCCMatlab {
 
         /**MAG = abs( fft(frames,nfft,1) );**/
         MAG = new double[nfft][frames[0].length];
+
+        /*
+        //----------------------
+        ExecutorService executorService = Executors.newFixedThreadPool(frames[0].length);
+
+        for(int j=0; j<frames[0].length; j++){
+            final int workCol = j;
+            executorService.execute(new Runnable() {
+                public void run() {
+                    System.out.println("Asynchronous task");
+                    Complex[] temp = new Complex[nfft];
+                    for (int i = 0; i < frames.length; i++) {
+                        temp[i] = new Complex(frames[i][workCol], 0.0);
+                    }
+                    for (int i = frames.length; i < nfft; i++) {
+                        temp[i] = new Complex(0.0, 0.0);
+                    }
+
+                    Complex[] fft_temp = fft(temp);
+
+                    for (int i = 0; i < nfft; i++) {
+                        MAG[i][workCol] = fft_temp[i].abs();
+                    }
+                }
+            });
+        }
+
+        executorService.shutdown();
+        //----------------------
+        */
 
         for(int j=0; j<frames[0].length; j++){
             Complex[] temp = new Complex[nfft];
@@ -148,8 +185,10 @@ public class MFCCMatlab {
                 MAG[i][j] = fft_temp[i].abs();
             }
         }
+
         /**Using Multithreading**/
         //Creates a pool of 5 concurrent thread workers
+
         /*
         ExecutorService es = Executors.newFixedThreadPool(5);
 

@@ -1,18 +1,44 @@
 package in.iitd.assistech.smartband;
 
+import android.content.Context;
 import android.content.res.AssetManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.net.Uri;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
 
 import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
+
+import static java.security.AccessController.getContext;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +67,26 @@ public class MainActivity extends AppCompatActivity {
     private static int L = 22; //liftering coefficient
 
     MFCCMatlab mfcc; // instance of class MFCCMatlab
+
+    /***Variables for audiorecord*/
+    private static final int RECORDER_SAMPLERATE = 48000;
+
+    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+
+    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+
+    private static final int RECORD_TIME_DURATION = 500; //0.5 seconds
+
+    private AudioRecord recorder = null;
+    private Thread recordingThread = null;
+    private boolean isRecording = false;
+
+    int bufferSize;
+    int BufferElements2Rec;
+    int BytesPerElement;
+    short[] sData;
+    /**---------------------------**/
+
     double[] speech; //TODO: audio as array. Currently reading from an array in sheet
     //TODO: Change the sampling frequency. This is for testing only
     int sampFreq = 48000; // FS - sampling frequency of audio
@@ -61,6 +107,9 @@ public class MainActivity extends AppCompatActivity {
         prepNN();
         timings.addSplit("After PrepNN");
         timings.dumpToLog();
+
+        bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+                RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
     }
 
     //Load the weights and bias in the form of matrix from sheet in Assets Folder
@@ -158,47 +207,93 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**-----------------Using AudioClipRecorder Class-----------**/
+
+
+    /**---------------------------------------------------------**/
+
+    /**-----------Extra Added for AudioRecord------------**/
+    public void processMicSound(View v){
+
+        BufferElements2Rec = RECORDER_SAMPLERATE * RECORD_TIME_DURATION/1000; // number of 16 bits for 3 seconds
+        //BufferElements2Rec = 24000;
+        System.out.println(BufferElements2Rec);
+
+        BytesPerElement = 2; // 2 bytes in 16bit format
+        if (bufferSize != AudioRecord.ERROR_BAD_VALUE && bufferSize > 0){
+            recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                    RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                    RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+
+
+            recorder.startRecording();
+        }
+
+        isRecording = true;
+        recordingThread = new Thread(new Runnable() {
+            public void run() {
+                while (isRecording) {
+                    sData = new short[BufferElements2Rec];
+                    // gets the voice output from microphone to byte format
+                    recorder.read(sData, 0, BufferElements2Rec);
+                    System.out.println("Short writing to file" + Arrays.toString(sData));
+                    newProcessAudioMic(sData);
+                    isRecording = false;
+                }
+            }
+        }, "AudioRecorder Thread");
+        recordingThread.start();
+
+        /*TimerTask stopRec = new TimerTask() {
+            @Override
+            public void run() {
+                isRecording = false;
+                recorder.stop();
+                recorder.release();
+                recorder = null;
+                recordingThread = null;
+            }
+        };
+        Timer timer = new Timer();
+        timer.schedule(stopRec, 50,3000); //stopRec every 3 seconds, with a 50 ms delay for the first time of execution.
+*/
+    }
+
+    public void stopRecording(View v) {
+        // stops the recording activity
+        if (null != recorder) {
+            isRecording = false;
+            recorder.stop();
+            recorder.release();
+            recorder = null;
+            recordingThread = null;
+        }
+    }
+    /**-------------------------------**/
+
     public void loadWeight(View v){
         //displayWeight(inputFeat);
     }
 
     //TODO: Add the process and handle onClick of Button 3
     public void processAudioEvent(View v){
-        /*
-        speech = new double[inputFeat.length];
-        Thread thread2 = new Thread(){
-            @Override
-            public void run() {
-
-            }
-        };
-        thread2.start();
-        Log.e("THREAD 1 !!!!!!", "SO WHAT");*/
         speech = new double[inputFeat.length];
         for(int i=0; i<inputFeat.length; i++){
             speech[i] = inputFeat[i][0];
         }
-        //System.out.println("Main Activity line 153 - arr: " + Double.toString(speech[20]));
+
         featSound = new double[160];
         mfcc = new MFCCMatlab(speech, sampFreq, TW, TS, alpha, range, M, N, L);
         featSound = mfcc.getFeatSound();
-        System.out.println(Arrays.toString(featSound));
         displayWeight(featSound);
     }
 
-    private double[] mat2array(double[][] input) {
-        double[][] matrix = transpose(input);
-        double[] array = new double[matrix.length * matrix[0].length];
-        for(int i = 0; i < matrix.length; i++) {
-            double[] row = matrix[i];
-            for(int j = 0; j < row.length; j++) {
-                double number = matrix[i][j];
-                array[i*row.length+j] = number;
-            }
-        }
-        return array;
+    public void newProcessAudioMic(short[] sData){
+        featSound = new double[160];
+        mfcc = new MFCCMatlab(sData, sampFreq, TW, TS, alpha, range, M, N, L);
+        featSound = mfcc.getFeatSound();
+        displayWeight(featSound);
     }
-
     public void calcOutput(View v){
         TextView hornValue = (TextView)findViewById(R.id.hornValue);
         TextView cryValue = (TextView)findViewById(R.id.cryValue);
@@ -283,5 +378,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return output;
+    }
+
+    private double[] mat2array(double[][] input) {
+        double[][] matrix = transpose(input);
+        double[] array = new double[matrix.length * matrix[0].length];
+        for(int i = 0; i < matrix.length; i++) {
+            double[] row = matrix[i];
+            for(int j = 0; j < row.length; j++) {
+                double number = matrix[i][j];
+                array[i*row.length+j] = number;
+            }
+        }
+        return array;
     }
 }

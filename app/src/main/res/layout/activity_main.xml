@@ -109,4 +109,25 @@
         android:onClick="processAudioEvent"
         android:text="Process Audio" />
 
+    <Button
+        android:id="@+id/micReadButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/processAudioButton"
+        android:layout_alignRight="@+id/processAudioButton"
+        android:layout_below="@+id/inputWeight"
+        android:onClick="processMicSound"
+        android:text="Read Mic" />
+
+    <Button
+        android:id="@+id/stopRecordButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/micReadButton"
+        android:layout_alignStart="@+id/micReadButton"
+        android:layout_below="@+id/micReadButton"
+        android:layout_marginTop="21dp"
+        android:onClick="stopRecording"
+        android:text="Stop Record" />
+
 </RelativeLayout>

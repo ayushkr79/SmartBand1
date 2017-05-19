@@ -3,6 +3,7 @@
     package="in.iitd.assistech.smartband">
 
     <uses-permission android:name="android.permission.ASEC_CREATE"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"></uses-permission>
 
     <application
         android:allowBackup="true"
