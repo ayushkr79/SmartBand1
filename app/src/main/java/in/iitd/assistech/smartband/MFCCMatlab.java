@@ -5,19 +5,6 @@ import android.graphics.Matrix;
 import android.util.Log;
 import android.util.TimingLogger;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.RunnableFuture;
-
-import static java.lang.Math.exp;
-import static java.lang.Math.log;
-
 public class MFCCMatlab {
 
     private static final String TAG = "MFCCMatlab";
@@ -47,40 +34,6 @@ public class MFCCMatlab {
     double[] featSound;
 
 
-    public MFCCMatlab(double[] speech, int FS, int TW, int TS, double alpha,
-                      int[] range, int M, int N, int L){
-        this.speech = speech;
-        this.FS = FS;
-        this.TW = TW;
-        this.TS = TS;
-        this.alpha = alpha;
-        this.range = range;
-        this.M = M;
-        this.N = N;
-        this.L = L;
-
-        NW = (int) Math.round(Math.pow(10, -3)*TW*FS);
-        NS = (int) Math.round(Math.pow(10, -3)*TS*FS);
-
-        //next power of 2 greater than NW
-        nfft = NW == 0 ? 0 : 32 - Integer.numberOfLeadingZeros(NW - 1);
-        nfft = (int)Math.pow(2, nfft);
-
-        K = nfft/2 + 1;
-
-        TimingLogger timingsMFCC = new TimingLogger(TAG, "MFCCMatlab setter");
-        //TODO: Minimise time of these two next line
-
-        process();
-
-        timingsMFCC.addSplit("process in MFCCMatlab");
-
-        calcFeatSound();
-
-        timingsMFCC.addSplit("calcFeatSound in MFCCMatlab");
-        timingsMFCC.dumpToLog();
-    }
-
     public MFCCMatlab(short[] speech, int FS, int TW, int TS, double alpha,
                       int[] range, int M, int N, int L){
         this.speechShort = speech;
@@ -92,6 +45,8 @@ public class MFCCMatlab {
         this.M = M;
         this.N = N;
         this.L = L;
+
+        speech = new short[speechShort.length];
 
         NW = (int) Math.round(Math.pow(10, -3)*TW*FS);
         NS = (int) Math.round(Math.pow(10, -3)*TS*FS);
@@ -127,7 +82,7 @@ public class MFCCMatlab {
 
         /**speech = filter( [1 -alpha], 1, speech );**/
         double[] b = {1.0, -alpha};
-        speech = filter(b, 1.0, speech);
+        speech = filter(b, 1.0, speechShort);
 
         timingMfccProcess.addSplit("Method - filter");
 
@@ -139,36 +94,6 @@ public class MFCCMatlab {
 
         /**MAG = abs( fft(frames,nfft,1) );**/
         MAG = new double[nfft][frames[0].length];
-
-        /*
-        //----------------------
-        ExecutorService executorService = Executors.newFixedThreadPool(frames[0].length);
-
-        for(int j=0; j<frames[0].length; j++){
-            final int workCol = j;
-            executorService.execute(new Runnable() {
-                public void run() {
-                    System.out.println("Asynchronous task");
-                    Complex[] temp = new Complex[nfft];
-                    for (int i = 0; i < frames.length; i++) {
-                        temp[i] = new Complex(frames[i][workCol], 0.0);
-                    }
-                    for (int i = frames.length; i < nfft; i++) {
-                        temp[i] = new Complex(0.0, 0.0);
-                    }
-
-                    Complex[] fft_temp = fft(temp);
-
-                    for (int i = 0; i < nfft; i++) {
-                        MAG[i][workCol] = fft_temp[i].abs();
-                    }
-                }
-            });
-        }
-
-        executorService.shutdown();
-        //----------------------
-        */
 
         for(int j=0; j<frames[0].length; j++){
             Complex[] temp = new Complex[nfft];
@@ -185,67 +110,6 @@ public class MFCCMatlab {
                 MAG[i][j] = fft_temp[i].abs();
             }
         }
-
-        /**Using Multithreading**/
-        //Creates a pool of 5 concurrent thread workers
-
-        /*
-        ExecutorService es = Executors.newFixedThreadPool(5);
-
-        //List of results for each row computation task
-        List<Future<Void>> results = new ArrayList<Future<Void>>();
-        try{
-            for(int col=0; col<frames[0].length; col++){
-                final int workCol = col;
-
-                //The main part. You can submit Callable or Runnable
-                // tasks to the ExecutorService, and it will run them
-                // for you in the number of threads you have allocated.
-                // If you put more than 5 tasks, they will just patiently
-                // wait for a task to finish and release a thread, then run.
-                Future<Void> task = es.submit(new Callable<Void>(){
-                    @Override
-                    public Void call(){
-                        for(int row=0; row<frames.length; row++){
-                            //do something for each column of workRow
-                            Complex[] temp = new Complex[nfft];
-                            for(int i=0; i<frames.length; i++){
-                                temp[i] = new Complex(frames[i][workCol], 0.0);
-                            }
-                            for(int i=frames.length; i<nfft; i++){
-                                temp[i] = new Complex(0.0, 0.0);
-                            }
-
-                            Complex[] fft_temp = fft(temp);
-
-                            for(int i=0; i<nfft; i++){
-                                MAG[i][workCol] = fft_temp[i].abs();
-                            }
-                        }
-                        return null;
-                    }
-                });
-                //Store the work task in the list.
-                results.add(task);
-            }
-        }finally{
-            //Make sure thread-pool is shutdown and all worker
-            //threads are released.
-            es.shutdown();
-        }
-
-        for(Future<Void> task : results){
-            try{
-                //This will wait for threads to finish.
-                // i.e. same as Thread.join()
-                task.get();
-            }catch(ExecutionException e){
-                //One of the tasks threw an exception!
-                throw new RuntimeException(e);
-            }catch (InterruptedException e){
-            }
-        }
-        */
 
         timingMfccProcess.addSplit("Calculate MAG");
 
@@ -381,11 +245,11 @@ public class MFCCMatlab {
         return DCT;
     }
 
-    public static double[] filter(double[] b, double a, double[] x) {
+    public static double[] filter(double[] b, double a, short[] x) {
         double[] filter = new double[x.length];
         filter[0] = 0.0;
         for (int i=1; i<x.length; i++){
-            filter[i] = (b[0]*x[i] + b[1]*x[i-1])/a;
+            filter[i] = (b[0]*x[i] + b[1]*x[i-1])*1.0/a;
         }
         return filter;
     }
@@ -435,6 +299,7 @@ public class MFCCMatlab {
 
     /**CHECKED: No ERROR**/
     public static Complex[] fft(Complex[] x) {
+
         int n = x.length;
         // base case
         if (n == 1) return new Complex[] { x[0] };

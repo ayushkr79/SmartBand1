@@ -6,128 +6,107 @@
     android:layout_height="match_parent"
     tools:context="in.iitd.assistech.smartband.MainActivity">
 
-    <Button
-        android:id="@+id/weightButton"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginLeft="5dp"
-        android:onClick="loadWeight"
-        android:text="Weights"
-        android:visibility="visible"
-        tools:layout_editor_absoluteX="5dp"
-        tools:layout_editor_absoluteY="16dp" />
-
-    <TextView
-        android:id="@+id/inputWeight"
-        android:layout_width="wrap_content"
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/weightButton"
-        android:text="HELLO WORLD"
-        android:visibility="visible"
-        tools:layout_editor_absoluteX="5dp"
-        tools:layout_editor_absoluteY="95dp" />
+        android:background="?attr/colorPrimary"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
-    <Button
-        android:id="@+id/outputButton"
-        android:layout_width="wrap_content"
+    <!-- our tablayout to display tabs  -->
+    <android.support.design.widget.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/inputWeight"
-        android:layout_marginLeft="16dp"
-        android:layout_marginStart="16dp"
-        android:layout_toEndOf="@+id/inputWeight"
-        android:layout_toRightOf="@+id/inputWeight"
-        android:onClick="calcOutput"
-        android:text="Output" />
+        android:background="?attr/colorPrimary"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
+
+    <!-- View pager to swipe views -->
+    <android.support.v4.view.ViewPager
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"/>
 
     <TextView
         android:id="@+id/hornText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/weightButton"
-        android:layout_alignStart="@+id/weightButton"
+        android:text="Vehicle Horn"
         android:layout_centerVertical="true"
-        android:text="Vehicle Horn" />
+        android:layout_alignLeft="@+id/micReadButton"
+        android:layout_alignStart="@+id/micReadButton" />
 
     <TextView
         android:id="@+id/hornValue"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/cryValue"
-        android:layout_alignStart="@+id/cryValue"
-        android:layout_centerVertical="true"
-        android:text="TextView" />
+        android:text="Starting..."
+        android:layout_alignBaseline="@+id/hornText"
+        android:layout_alignBottom="@+id/hornText"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 
     <TextView
         android:id="@+id/cryText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/hornText"
-        android:layout_alignStart="@+id/hornText"
+        android:layout_marginTop="52dp"
+        android:text="Baby Cry"
         android:layout_below="@+id/hornText"
-        android:layout_marginTop="48dp"
-        android:text="Baby Cry" />
+        android:layout_alignLeft="@+id/hornText"
+        android:layout_alignStart="@+id/hornText" />
 
     <TextView
         android:id="@+id/cryValue"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/outputButton"
-        android:layout_alignStart="@+id/outputButton"
+        android:text="Starting..."
         android:layout_alignTop="@+id/cryText"
-        android:text="TextView" />
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 
     <TextView
         android:id="@+id/ambientText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
+        android:layout_marginTop="43dp"
+        android:text="Ambient Sound"
         android:layout_below="@+id/cryText"
-        android:layout_marginTop="41dp"
-        android:text="Ambient Sound" />
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
 
     <TextView
         android:id="@+id/ambientValue"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Starting..."
+        android:layout_alignBaseline="@+id/ambientText"
+        android:layout_alignBottom="@+id/ambientText"
         android:layout_alignLeft="@+id/cryValue"
-        android:layout_alignStart="@+id/cryValue"
-        android:layout_alignTop="@+id/ambientText"
-        android:text="TextView" />
+        android:layout_alignStart="@+id/cryValue" />
 
-    <Button
-        android:id="@+id/processAudioButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/outputButton"
-        android:layout_marginLeft="35dp"
-        android:layout_marginStart="35dp"
-        android:layout_toEndOf="@+id/outputButton"
-        android:layout_toRightOf="@+id/outputButton"
-        android:onClick="processAudioEvent"
-        android:text="Process Audio" />
 
     <Button
         android:id="@+id/micReadButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignEnd="@+id/processAudioButton"
-        android:layout_alignRight="@+id/processAudioButton"
-        android:layout_below="@+id/inputWeight"
         android:onClick="processMicSound"
-        android:text="Read Mic" />
+        android:text="Read Mic"
+        android:layout_alignParentTop="true"
+        android:layout_alignRight="@+id/ambientText"
+        android:layout_alignEnd="@+id/ambientText" />
 
     <Button
         android:id="@+id/stopRecordButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/micReadButton"
-        android:layout_alignStart="@+id/micReadButton"
-        android:layout_below="@+id/micReadButton"
-        android:layout_marginTop="21dp"
         android:onClick="stopRecording"
-        android:text="Stop Record" />
+        android:text="Stop Record"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 
 </RelativeLayout>

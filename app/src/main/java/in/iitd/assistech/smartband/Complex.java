@@ -1,6 +1,6 @@
 package in.iitd.assistech.smartband;
-
 import java.util.Objects;
+
 
 public class Complex {
     private final double re;   // the real part
@@ -127,4 +127,3 @@ public class Complex {
         return Objects.hash(re, im);
     }
 }
-

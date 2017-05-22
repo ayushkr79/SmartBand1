@@ -1,49 +1,42 @@
 package in.iitd.assistech.smartband;
 
-import android.content.Context;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.net.Uri;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
+import android.support.design.widget.TabLayout;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v7.widget.Toolbar;
 import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executors;
 
 import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
 
-import static java.security.AccessController.getContext;
+public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener{
 
-public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
 
-    private static final String TAG = "Main_Activity";
+    private TabLayout tabLayout;
+    private ViewPager viewPager;
 
     static double[][] inputWeights;
     static double[][] layerWeights;
@@ -53,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     static double[][] meanTrain;
     static double[][] devTrain;
 
+    boolean isPrepNN = false;
     double[][] inputFeat;
 
     double hornProb;
@@ -70,13 +64,15 @@ public class MainActivity extends AppCompatActivity {
     MFCCMatlab mfcc; // instance of class MFCCMatlab
 
     /***Variables for audiorecord*/
+    private static int REQUEST_MICROPHONE = 101;
     private static final int RECORDER_SAMPLERATE = 48000;
+    private static final int PROCESS_LENGTH = 48000;
 
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
 
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
-    private static final int RECORD_TIME_DURATION = 500; //0.5 seconds
+    private static final int RECORD_TIME_DURATION = 3000; //0.5 seconds
 
     private AudioRecord recorder = null;
     private Thread recordingThread = null;
@@ -86,30 +82,78 @@ public class MainActivity extends AppCompatActivity {
     int BufferElements2Rec;
     int BytesPerElement;
     short[] sData;
+    short[] sDataPart = new short[PROCESS_LENGTH];
 
     private static final String FILENAME = "sound1.txt";
     /**---------------------------**/
 
-    double[] speech; //TODO: audio as array. Currently reading from an array in sheet
-    //TODO: Change the sampling frequency. This is for testing only
-    int sampFreq = 48000; // FS - sampling frequency of audio
-
     /**Hurray**/
-    /**The final shit that we need s here**/
+    /**The final shit that we need is here**/
     double[] featSound; //160 features of 250 ms audio
     /****/
 
     TimingLogger timings;
+
+    Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            TextView hornValue = (TextView)findViewById(R.id.hornValue);
+            TextView cryValue = (TextView)findViewById(R.id.cryValue);
+            TextView ambientValue = (TextView)findViewById(R.id.ambientValue);
+
+            hornValue.setText(String.format("%.2g%n", hornProb));
+            cryValue.setText(String.format("%.2g%n", cryProb));
+            ambientValue.setText(String.format("%.2g%n", ambientProb));
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        timings = new TimingLogger(TAG, "PrepNN :");
-        prepNN();
-        timings.addSplit("After PrepNN");
-        timings.dumpToLog();
+        //Adding toolbar to the activity
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        //Initializing the tablayout
+        tabLayout = (TabLayout) findViewById(R.id.tabLayout);
+
+        //Adding the tabs using addTab() method
+        tabLayout.addTab(tabLayout.newTab().setText("Tab 1"));
+        tabLayout.addTab(tabLayout.newTab().setText("Tab 2"));
+        tabLayout.addTab(tabLayout.newTab().setText("Tab 3"));
+        tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
+
+        //Initializing viewPager
+        viewPager = (ViewPager) findViewById(R.id.pager);
+
+        //Creating our pager adapter
+        Pager adapter = new Pager(getSupportFragmentManager(), tabLayout.getTabCount());
+
+        //Adding adapter to pager
+        viewPager.setAdapter(adapter);
+
+        //Adding onTabSelectedListener to swipe views
+        tabLayout.setOnTabSelectedListener(this);
+
+        Thread prepNNThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (this){
+                    prepNN();
+                    isPrepNN = true;
+                }
+            }
+        });
+        prepNNThread.start();
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_MICROPHONE);
+
+        }
 
         bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
                 RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
@@ -210,56 +254,46 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**-----------------Using AudioClipRecorder Class-----------**/
-
-
-    /**---------------------------------------------------------**/
-
-    /**-----------Extra Added for AudioRecord------------**/
     public void processMicSound(View v){
+        if(!isPrepNN){
+            Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
+        }else{
+            BufferElements2Rec = RECORDER_SAMPLERATE * RECORD_TIME_DURATION/1000; // number of 16 bits for 3 seconds
+            //BufferElements2Rec = 24000;
+            System.out.println(BufferElements2Rec);
 
-        BufferElements2Rec = RECORDER_SAMPLERATE * RECORD_TIME_DURATION/1000; // number of 16 bits for 3 seconds
-        //BufferElements2Rec = 24000;
-        System.out.println(BufferElements2Rec);
-
-        BytesPerElement = 2; // 2 bytes in 16bit format
-        if (bufferSize != AudioRecord.ERROR_BAD_VALUE && bufferSize > 0){
-            recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                    RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                    RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+            BytesPerElement = 2; // 2 bytes in 16bit format
+            if (bufferSize != AudioRecord.ERROR_BAD_VALUE && bufferSize > 0){
+                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                        RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                        RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
 
 
-            recorder.startRecording();
-        }
+                recorder.startRecording();
+            }
 
-        isRecording = true;
-        recordingThread = new Thread(new Runnable() {
-            public void run() {
-                while (isRecording) {
-                    sData = new short[BufferElements2Rec];
-                    // gets the voice output from microphone to byte format
-                    recorder.read(sData, 0, BufferElements2Rec);
-                    //System.out.println("Short writing to file" + Arrays.toString(sData));
+            isRecording = true;
+            recordingThread = new Thread(new Runnable() {
+                public void run() {
+                    while (isRecording) {
+                        synchronized (this){
+                            TimingLogger recordLogger = new TimingLogger(TAG, "recordingThread");
+                            recordLogger.addSplit("Before recorder");
+                            sData = new short[BufferElements2Rec];
+                            // gets the voice output from microphone to byte format
+                            recorder.read(sData, 0, BufferElements2Rec);
+                            recordLogger.addSplit("After recorder");
 
-                    //createFile(FILENAME, Arrays.toString(sData));
+                            sDataPart = Arrays.copyOfRange(sData, 0, PROCESS_LENGTH);
+                            recordLogger.addSplit("Copy sData");
+                            processAudioEvent();
+                            recordLogger.dumpToLog();
+                        }
+                    }
                 }
-            }
-        }, "AudioRecorder Thread");
-        recordingThread.start();
-
-        /*TimerTask stopRec = new TimerTask() {
-            @Override
-            public void run() {
-                isRecording = false;
-                recorder.stop();
-                recorder.release();
-                recorder = null;
-                recordingThread = null;
-            }
-        };
-        Timer timer = new Timer();
-        timer.schedule(stopRec, 50,3000); //stopRec every 3 seconds, with a 50 ms delay for the first time of execution.
-*/
+            }, "AudioRecorder Thread");
+            recordingThread.start();
+        }
     }
 
     public void stopRecording(View v) {
@@ -272,7 +306,6 @@ public class MainActivity extends AppCompatActivity {
             recordingThread = null;
         }
     }
-    /**-------------------------------**/
 
     public void createFile(String sFileName, String sBody){
         try
@@ -298,88 +331,76 @@ public class MainActivity extends AppCompatActivity {
     public void loadWeight(View v){
         //displayWeight(inputFeat);
     }
+    //Called in
+    public void processAudioEvent(){
+        if(!isPrepNN){
+            Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
+        }else {
+            /*speech = new double[inputFeat.length];
+            for(int i=0; i<inputFeat.length; i++){
+                speech[i] = inputFeat[i][0];
+            }*/
 
-    //TODO: Add the process and handle onClick of Button 3
-    public void processAudioEvent(View v){
-        speech = new double[inputFeat.length];
-        for(int i=0; i<inputFeat.length; i++){
-            speech[i] = inputFeat[i][0];
-        }
+            Thread featThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (this){
+                        TimingLogger featThreadLogger = new TimingLogger(TAG, "featThread");
+                        featThreadLogger.addSplit("Start");
 
-        featSound = new double[160];
-        mfcc = new MFCCMatlab(speech, sampFreq, TW, TS, alpha, range, M, N, L);
-        featSound = mfcc.getFeatSound();
-        displayWeight(featSound);
-    }
+                        featSound = new double[160];
+                        mfcc = new MFCCMatlab(sDataPart, RECORDER_SAMPLERATE, TW, TS, alpha, range, M, N, L);
+                        featSound = mfcc.getFeatSound();
 
-    public void newProcessAudioMic(short[] sData){
-        featSound = new double[160];
-        mfcc = new MFCCMatlab(sData, sampFreq, TW, TS, alpha, range, M, N, L);
-        featSound = mfcc.getFeatSound();
-        displayWeight(featSound);
-    }
-    public void calcOutput(View v){
-        TextView hornValue = (TextView)findViewById(R.id.hornValue);
-        TextView cryValue = (TextView)findViewById(R.id.cryValue);
-        TextView ambientValue = (TextView)findViewById(R.id.ambientValue);
+                        //TODO: Check that inputFeat is 160x1 vector. Replace it with featSound at later stage.
+                        //Normalize input feature with training mean and deviation
+                        for (int i=0; i<featSound.length; i++){
+                            featSound[i] = (featSound[i]-meanTrain[i][0])/devTrain[i][0];
+                        }
 
-        //TODO: Check that inputFeat is 160x1 vector. Replace it with featSound at later stage.
-        //TODO: Uncomment the code in for loop
-        //Normalize input feature with training mean and deviation
-        for (int i=0; i<featSound.length; i++){
-            featSound[i] = (featSound[i]-meanTrain[i][0])/devTrain[i][0];
-        }
+                        double[] hiddenNodes = new double[inputWeights.length];
+                        for (int i=0; i<inputWeights.length; i++){
+                            double sum = 0;
+                            for (int j=0; j<inputWeights[0].length; j++){
+                                sum += inputWeights[i][j]*featSound[j];
+                            }
+                            hiddenNodes[i] = tansig(sum + inputBias[i][0]);
+                        }
 
-        double[] hiddenNodes = new double[inputWeights.length];
-        for (int i=0; i<inputWeights.length; i++){
-            double sum = 0;
-            for (int j=0; j<inputWeights[0].length; j++){
-                sum += inputWeights[i][j]*featSound[j];
-            }
-            hiddenNodes[i] = tansig(sum + inputBias[i][0]);
-        }
+                        double[] outputNodes = new double[layerWeights.length];
+                        for (int i=0; i<layerWeights.length; i++){
+                            double sum = 0;
+                            for (int j=0; j<layerWeights[0].length; j++){
+                                sum += layerWeights[i][j]*hiddenNodes[j];
+                            }
+                            outputNodes[i] = sum + outputBias[i][0];
+                        }
 
-        double[] outputNodes = new double[layerWeights.length];
-        for (int i=0; i<layerWeights.length; i++){
-            double sum = 0;
-            for (int j=0; j<layerWeights[0].length; j++){
-                sum += layerWeights[i][j]*hiddenNodes[j];
-            }
-            outputNodes[i] = sum + outputBias[i][0];
-        }
+                        double sum = 0.0;
+                        for (int i=0; i<outputNodes.length; i++){
+                            sum += Math.exp(outputNodes[i]);
+                        }
 
-        displayWeight(outputNodes);
+                        for (int i=0; i<outputNodes.length; i++){
+                            outputNodes[i] = softmax(outputNodes[i], sum);
+                        }
 
-        double sum = 0.0;
-        for (int i=0; i<outputNodes.length; i++){
-            sum += Math.exp(outputNodes[i]);
-        }
+                        hornProb = outputNodes[0];
+                        ambientProb = outputNodes[1];
+                        cryProb = outputNodes[2];
 
-        for (int i=0; i<outputNodes.length; i++){
-            outputNodes[i] = softmax(outputNodes[i], sum);
-        }
+                        for(int i=0; i<outputNodes.length; i++){
+                            System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
+                        }
 
-        hornProb = outputNodes[0];
-        ambientProb = outputNodes[1];
-        cryProb = outputNodes[2];
-
-        for(int i=0; i<outputNodes.length; i++){
-            System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
-        }
-
-        hornValue.setText(Double.toString(hornProb));
-        cryValue.setText(Double.toString(cryProb));
-        ambientValue.setText(Double.toString(ambientProb));
-    }
-
-    public void displayWeight(double[] value){
-        TextView inputWeight = (TextView)findViewById(R.id.inputWeight);
-        //inputWeight.setText(Double.toString(value[0][0]));
-        for(int i=0; i<value.length; i++){
-            //for(int j=0; j<value.length; j++){
-            inputWeight.append(Double.toString(value[i]));
-            inputWeight.append("\n");
-            //}
+                        handler.sendEmptyMessage(0);
+                        featThreadLogger.addSplit("FeatSound calculated");
+                        featThreadLogger.dumpToLog();
+                    }
+                }
+            });
+            featThread.start();
+            //displayWeight(featSound);
         }
     }
 
@@ -394,26 +415,18 @@ public class MainActivity extends AppCompatActivity {
         return (temp/sum);
     }
 
-    private double[][] transpose(double[][] input){
-        double[][] output = new double[input[0].length][input.length];
-        for(int i=0; i<input[0].length; i++){
-            for(int j=0; j<input.length; j++){
-                output[i][j] = input[j][i];
-            }
-        }
-        return output;
+    @Override
+    public void onTabSelected(TabLayout.Tab tab) {
+        viewPager.setCurrentItem(tab.getPosition());
     }
 
-    private double[] mat2array(double[][] input) {
-        double[][] matrix = transpose(input);
-        double[] array = new double[matrix.length * matrix[0].length];
-        for(int i = 0; i < matrix.length; i++) {
-            double[] row = matrix[i];
-            for(int j = 0; j < row.length; j++) {
-                double number = matrix[i][j];
-                array[i*row.length+j] = number;
-            }
-        }
-        return array;
+    @Override
+    public void onTabUnselected(TabLayout.Tab tab) {
+
+    }
+
+    @Override
+    public void onTabReselected(TabLayout.Tab tab) {
+
     }
 }
