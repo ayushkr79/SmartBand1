@@ -1,6 +1,7 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
@@ -16,10 +17,18 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.analytics.Tracker;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -31,9 +40,14 @@ import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
 
-public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener{
+public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener,
+        View.OnClickListener {
 
     private static final String TAG = "MainActivity";
+    private static final String TAG2 = "SignInActivity";
+    private static final int RC_SIGN_IN = 9001;
+    private GoogleApiClient mGoogleApiClient;
+    private Tracker mTracker;
 
     private TabLayout tabLayout;
     private ViewPager viewPager;
@@ -42,11 +56,11 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     static double[][] layerWeights;
     static double[][] inputBias;
     static double[][] outputBias;
-
     static double[][] meanTrain;
     static double[][] devTrain;
 
     boolean isPrepNN = false;
+    boolean processing = false;
     double[][] inputFeat;
 
     double hornProb;
@@ -66,7 +80,7 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     /***Variables for audiorecord*/
     private static int REQUEST_MICROPHONE = 101;
     private static final int RECORDER_SAMPLERATE = 48000;
-    private static final int PROCESS_LENGTH = 48000;
+    private static final int PROCESS_LENGTH = 24000;
 
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
 
@@ -82,17 +96,18 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     int BufferElements2Rec;
     int BytesPerElement;
     short[] sData;
-    short[] sDataPart = new short[PROCESS_LENGTH];
+    short[] sDataPart1 = new short[PROCESS_LENGTH];
+    /*short[] sDataPart2 = new short[PROCESS_LENGTH];
+    short[] sDataPart3 = new short[PROCESS_LENGTH];
+    short[] sDataPart4 = new short[PROCESS_LENGTH];
+    short[] sDataPart5 = new short[PROCESS_LENGTH];
+    short[] sDataPart6 = new short[PROCESS_LENGTH];*/
 
-    private static final String FILENAME = "sound1.txt";
-    /**---------------------------**/
 
     /**Hurray**/
     /**The final shit that we need is here**/
     double[] featSound; //160 features of 250 ms audio
     /****/
-
-    TimingLogger timings;
 
     Handler handler = new Handler(){
         @Override
@@ -111,6 +126,13 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+//        AnalyticsApplication application = (AnalyticsApplication) getApplication();
+//        mTracker = application.getDefaultTracker();
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
 
         //Adding toolbar to the activity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -254,45 +276,59 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         }
     }
 
-    public void processMicSound(View v){
-        if(!isPrepNN){
-            Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
-        }else{
-            BufferElements2Rec = RECORDER_SAMPLERATE * RECORD_TIME_DURATION/1000; // number of 16 bits for 3 seconds
-            //BufferElements2Rec = 24000;
-            System.out.println(BufferElements2Rec);
+    /**-----------------------**/
 
-            BytesPerElement = 2; // 2 bytes in 16bit format
-            if (bufferSize != AudioRecord.ERROR_BAD_VALUE && bufferSize > 0){
-                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                        RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                        RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+    public void processMicSound(){
+        if(!isRecording){
+            //processing = true;
+            if(!isPrepNN){
+                Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
+            }else{
+                BufferElements2Rec = RECORDER_SAMPLERATE * RECORD_TIME_DURATION/1000; // number of 16 bits for 3 seconds
+                //BufferElements2Rec = 24000;
+                System.out.println(BufferElements2Rec);
+
+                BytesPerElement = 2; // 2 bytes in 16bit format
+                if (bufferSize != AudioRecord.ERROR_BAD_VALUE && bufferSize > 0){
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                            RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                            RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
 
 
-                recorder.startRecording();
-            }
+                    recorder.startRecording();
+                }
 
-            isRecording = true;
-            recordingThread = new Thread(new Runnable() {
-                public void run() {
-                    while (isRecording) {
-                        synchronized (this){
-                            TimingLogger recordLogger = new TimingLogger(TAG, "recordingThread");
-                            recordLogger.addSplit("Before recorder");
-                            sData = new short[BufferElements2Rec];
-                            // gets the voice output from microphone to byte format
-                            recorder.read(sData, 0, BufferElements2Rec);
-                            recordLogger.addSplit("After recorder");
+                isRecording = true;
+                recordingThread = new Thread(new Runnable() {
+                    public void run() {
+                        while (isRecording) {
+                            synchronized (this){
+                                TimingLogger recordLogger = new TimingLogger(TAG, "recordingThread");
+                                recordLogger.addSplit("Before recorder");
+                                sData = new short[BufferElements2Rec];
+                                // gets the voice output from microphone to byte format
+                                recorder.read(sData, 0, BufferElements2Rec);
+                                recordLogger.addSplit("After recorder");
 
-                            sDataPart = Arrays.copyOfRange(sData, 0, PROCESS_LENGTH);
-                            recordLogger.addSplit("Copy sData");
-                            processAudioEvent();
-                            recordLogger.dumpToLog();
+                                //TODO: Properly make the partition of sData
+                                sDataPart1 = Arrays.copyOfRange(sData, 0, PROCESS_LENGTH);
+                                //sDataPart2 = Arrays.copyOfRange(sData, PROCESS_LENGTH, 2*PROCESS_LENGTH);
+                                //sDataPart3 = Arrays.copyOfRange(sData, 2*PROCESS_LENGTH, 3*PROCESS_LENGTH);
+                                //sDataPart4 = Arrays.copyOfRange(sData, 3*PROCESS_LENGTH, 4*PROCESS_LENGTH);
+                                //sDataPart5 = Arrays.copyOfRange(sData, 4*PROCESS_LENGTH, 5*PROCESS_LENGTH);
+                                //sDataPart6 = Arrays.copyOfRange(sData, 5*PROCESS_LENGTH, 6*PROCESS_LENGTH);
+
+                                recordLogger.addSplit("Copy sData");
+                                processAudioEvent();
+                                recordLogger.dumpToLog();
+                            }
                         }
                     }
-                }
-            }, "AudioRecorder Thread");
-            recordingThread.start();
+                }, "AudioRecorder Thread");
+                recordingThread.start();
+            }
+        } else{
+            Toast.makeText(this, "Recording started", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -307,81 +343,53 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         }
     }
 
-    public void createFile(String sFileName, String sBody){
-        try
-        {
-            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
-            if (!root.exists()) {
-                root.mkdirs();
-            }
-            System.out.println(root.getAbsolutePath());
-            File gpxfile = new File(root, sFileName);
-            FileWriter writer = new FileWriter(gpxfile);
-            writer.append(sBody);
-            writer.flush();
-            writer.close();
-        }
-        catch(IOException e)
-        {
-            e.printStackTrace();
-
-        }
-    }
-
-    public void loadWeight(View v){
-        //displayWeight(inputFeat);
-    }
-    //Called in
-    public void processAudioEvent(){
-        if(!isPrepNN){
+    //Called in processMicSound
+    public void processAudioEvent() {
+        if (!isPrepNN) {
             Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
-        }else {
-            /*speech = new double[inputFeat.length];
-            for(int i=0; i<inputFeat.length; i++){
-                speech[i] = inputFeat[i][0];
-            }*/
+        } else {
 
             Thread featThread = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    synchronized (this){
+                    synchronized (this) {
                         TimingLogger featThreadLogger = new TimingLogger(TAG, "featThread");
                         featThreadLogger.addSplit("Start");
 
                         featSound = new double[160];
-                        mfcc = new MFCCMatlab(sDataPart, RECORDER_SAMPLERATE, TW, TS, alpha, range, M, N, L);
+                        mfcc = new MFCCMatlab(sDataPart1, RECORDER_SAMPLERATE, TW, TS, alpha, range, M, N, L);
                         featSound = mfcc.getFeatSound();
 
                         //TODO: Check that inputFeat is 160x1 vector. Replace it with featSound at later stage.
                         //Normalize input feature with training mean and deviation
-                        for (int i=0; i<featSound.length; i++){
-                            featSound[i] = (featSound[i]-meanTrain[i][0])/devTrain[i][0];
+                        for (int i = 0; i < featSound.length; i++) {
+                            featSound[i] = (featSound[i] - meanTrain[i][0]) / devTrain[i][0];
                         }
 
                         double[] hiddenNodes = new double[inputWeights.length];
-                        for (int i=0; i<inputWeights.length; i++){
+                        for (int i = 0; i < inputWeights.length; i++) {
                             double sum = 0;
-                            for (int j=0; j<inputWeights[0].length; j++){
-                                sum += inputWeights[i][j]*featSound[j];
+                            for (int j = 0; j < inputWeights[0].length; j++) {
+                                sum += inputWeights[i][j] * featSound[j];
                             }
                             hiddenNodes[i] = tansig(sum + inputBias[i][0]);
                         }
 
                         double[] outputNodes = new double[layerWeights.length];
-                        for (int i=0; i<layerWeights.length; i++){
+                        for (int i = 0; i < layerWeights.length; i++) {
                             double sum = 0;
-                            for (int j=0; j<layerWeights[0].length; j++){
-                                sum += layerWeights[i][j]*hiddenNodes[j];
+                            for (int j = 0; j < layerWeights[0].length; j++) {
+                                sum += layerWeights[i][j] * hiddenNodes[j];
                             }
                             outputNodes[i] = sum + outputBias[i][0];
                         }
 
                         double sum = 0.0;
-                        for (int i=0; i<outputNodes.length; i++){
+                        for (int i = 0; i < outputNodes.length; i++) {
                             sum += Math.exp(outputNodes[i]);
                         }
 
-                        for (int i=0; i<outputNodes.length; i++){
+                        for (int i = 0; i < outputNodes.length; i++) {
                             outputNodes[i] = softmax(outputNodes[i], sum);
                         }
 
@@ -389,7 +397,7 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                         ambientProb = outputNodes[1];
                         cryProb = outputNodes[2];
 
-                        for(int i=0; i<outputNodes.length; i++){
+                        for (int i = 0; i < outputNodes.length; i++) {
                             System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
                         }
 
@@ -400,7 +408,6 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                 }
             });
             featThread.start();
-            //displayWeight(featSound);
         }
     }
 
@@ -428,5 +435,57 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     @Override
     public void onTabReselected(TabLayout.Tab tab) {
 
+    }
+
+    public void createFile(String sFileName, String sBody){
+        try
+        {
+            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
+            if (!root.exists()) {
+                root.mkdirs();
+            }
+            System.out.println(root.getAbsolutePath());
+            File gpxfile = new File(root, sFileName);
+            FileWriter writer = new FileWriter(gpxfile);
+            writer.append(sBody);
+            writer.flush();
+            writer.close();
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.sign_in_button:
+                signIn();
+                break;
+            case R.id.micReadButton:
+                processMicSound();
+                break;
+            // ...
+        }
+    }
+
+    private void signIn() {
+        Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+        startActivityForResult(signInIntent, RC_SIGN_IN);
+    }
+
+    private void handleSignInResult(GoogleSignInResult result) {
+        Log.d(TAG, "handleSignInResult:" + result.isSuccess());
+        if (result.isSuccess()) {
+            // Signed in successfully, show authenticated UI.
+            GoogleSignInAccount acct = result.getSignInAccount();
+//            mStatusTextView.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
+//            updateUI(true);
+        } else {
+            // Signed out, show unauthenticated UI.
+            //updateUI(false);
+        }
     }
 }
