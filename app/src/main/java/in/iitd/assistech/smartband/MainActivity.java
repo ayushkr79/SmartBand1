@@ -1,7 +1,6 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
@@ -10,8 +9,12 @@ import android.media.MediaRecorder;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
@@ -23,34 +26,25 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.analytics.Tracker;
-import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 
 import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
 
 public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener,
-        View.OnClickListener {
+       OnTabEvent{
 
     private static final String TAG = "MainActivity";
-    private static final String TAG2 = "SignInActivity";
-    private static final int RC_SIGN_IN = 9001;
-    private GoogleApiClient mGoogleApiClient;
-    private Tracker mTracker;
 
     private TabLayout tabLayout;
     private ViewPager viewPager;
+    private Pager adapter;
 
     static double[][] inputWeights;
     static double[][] layerWeights;
@@ -60,12 +54,13 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     static double[][] devTrain;
 
     boolean isPrepNN = false;
-    boolean processing = false;
     double[][] inputFeat;
 
     double hornProb;
     double cryProb;
     double ambientProb;
+
+    private static int PROB_MSG_HNDL = 123;
 
     private static int TW = 50; //analysis frame duration (ms)
     private static int TS = 25; //analysis frame shit (ms)
@@ -77,32 +72,26 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
     MFCCMatlab mfcc; // instance of class MFCCMatlab
 
+    /**---------------**/
+
+    /**---------------**/
+
     /***Variables for audiorecord*/
     private static int REQUEST_MICROPHONE = 101;
     private static final int RECORDER_SAMPLERATE = 48000;
     private static final int PROCESS_LENGTH = 24000;
-
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
-
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-
     private static final int RECORD_TIME_DURATION = 3000; //0.5 seconds
 
     private AudioRecord recorder = null;
     private Thread recordingThread = null;
     private boolean isRecording = false;
-
     int bufferSize;
     int BufferElements2Rec;
     int BytesPerElement;
     short[] sData;
     short[] sDataPart1 = new short[PROCESS_LENGTH];
-    /*short[] sDataPart2 = new short[PROCESS_LENGTH];
-    short[] sDataPart3 = new short[PROCESS_LENGTH];
-    short[] sDataPart4 = new short[PROCESS_LENGTH];
-    short[] sDataPart5 = new short[PROCESS_LENGTH];
-    short[] sDataPart6 = new short[PROCESS_LENGTH];*/
-
 
     /**Hurray**/
     /**The final shit that we need is here**/
@@ -112,13 +101,10 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
-            TextView hornValue = (TextView)findViewById(R.id.hornValue);
-            TextView cryValue = (TextView)findViewById(R.id.cryValue);
-            TextView ambientValue = (TextView)findViewById(R.id.ambientValue);
-
-            hornValue.setText(String.format("%.2g%n", hornProb));
-            cryValue.setText(String.format("%.2g%n", cryProb));
-            ambientValue.setText(String.format("%.2g%n", ambientProb));
+            if(msg.getData().getInt("what") == PROB_MSG_HNDL){
+                //TODO create an instance of Tab2 fragment and call editValue()
+                adapter.editTab2Text(hornProb, cryProb, ambientProb);
+            }
         }
     };
 
@@ -126,13 +112,6 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-//        AnalyticsApplication application = (AnalyticsApplication) getApplication();
-//        mTracker = application.getDefaultTracker();
-
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestEmail()
-                .build();
 
         //Adding toolbar to the activity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -149,9 +128,8 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
         //Initializing viewPager
         viewPager = (ViewPager) findViewById(R.id.pager);
-
         //Creating our pager adapter
-        Pager adapter = new Pager(getSupportFragmentManager(), tabLayout.getTabCount());
+        adapter = new Pager(getSupportFragmentManager(), tabLayout.getTabCount());
 
         //Adding adapter to pager
         viewPager.setAdapter(adapter);
@@ -159,6 +137,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         //Adding onTabSelectedListener to swipe views
         tabLayout.setOnTabSelectedListener(this);
 
+        /**-------------**/
+
+        /**----------**/
         Thread prepNNThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -181,6 +162,19 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                 RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
     }
 
+    @Override
+    public void onButtonClick(String text) {
+        if(text == "MicReadButton"){
+            processMicSound();
+        }else if(text == "StopRecordButton"){
+            stopRecording();
+        }
+    }
+
+    /**--------------Sign In-------------------**/
+
+    /**----------------------------------------**/
+    /**----------For Sound Processing and stuff----------**/
     //Load the weights and bias in the form of matrix from sheet in Assets Folder
     private void prepNN() {
         try{
@@ -276,8 +270,6 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         }
     }
 
-    /**-----------------------**/
-
     public void processMicSound(){
         if(!isRecording){
             //processing = true;
@@ -332,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         }
     }
 
-    public void stopRecording(View v) {
+    public void stopRecording() {
         // stops the recording activity
         if (null != recorder) {
             isRecording = false;
@@ -401,7 +393,11 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                             System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
                         }
 
-                        handler.sendEmptyMessage(0);
+                        Message msg = new Message();
+                        Bundle bundle = new Bundle();
+                        bundle.putInt("what", PROB_MSG_HNDL);
+                        msg.setData(bundle);
+                        handler.sendMessage(msg);
                         featThreadLogger.addSplit("FeatSound calculated");
                         featThreadLogger.dumpToLog();
                     }
@@ -422,6 +418,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         return (temp/sum);
     }
 
+    /**---------------------------------------**/
+
+    /**-----------For Tab Layout--------------**/
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
         viewPager.setCurrentItem(tab.getPosition());
@@ -437,55 +436,5 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
     }
 
-    public void createFile(String sFileName, String sBody){
-        try
-        {
-            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
-            if (!root.exists()) {
-                root.mkdirs();
-            }
-            System.out.println(root.getAbsolutePath());
-            File gpxfile = new File(root, sFileName);
-            FileWriter writer = new FileWriter(gpxfile);
-            writer.append(sBody);
-            writer.flush();
-            writer.close();
-        }
-        catch(IOException e)
-        {
-            e.printStackTrace();
-
-        }
-    }
-
-    @Override
-    public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.sign_in_button:
-                signIn();
-                break;
-            case R.id.micReadButton:
-                processMicSound();
-                break;
-            // ...
-        }
-    }
-
-    private void signIn() {
-        Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
-        startActivityForResult(signInIntent, RC_SIGN_IN);
-    }
-
-    private void handleSignInResult(GoogleSignInResult result) {
-        Log.d(TAG, "handleSignInResult:" + result.isSuccess());
-        if (result.isSuccess()) {
-            // Signed in successfully, show authenticated UI.
-            GoogleSignInAccount acct = result.getSignInAccount();
-//            mStatusTextView.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
-//            updateUI(true);
-        } else {
-            // Signed out, show unauthenticated UI.
-            //updateUI(false);
-        }
-    }
+    /**---------------------------------------**/
 }

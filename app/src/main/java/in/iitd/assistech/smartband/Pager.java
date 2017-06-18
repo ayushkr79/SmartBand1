@@ -9,6 +9,9 @@ public class Pager extends FragmentStatePagerAdapter {
 
     //integer to count number of tabs
     int tabCount;
+    private Tab1 tab1;
+    private Tab2 tab2;
+    private Tab3 tab3;
 
     //Constructor to the class
     public Pager(FragmentManager fm, int tabCount) {
@@ -23,13 +26,13 @@ public class Pager extends FragmentStatePagerAdapter {
         //Returning the current tabs
         switch (position) {
             case 0:
-                Tab1 tab1 = new Tab1();
+                tab1 = new Tab1();
                 return tab1;
             case 1:
-                Tab2 tab2 = new Tab2();
+                tab2 = new Tab2();
                 return tab2;
             case 2:
-                Tab3 tab3 = new Tab3();
+                tab3 = new Tab3();
                 return tab3;
             default:
                 return null;
@@ -40,5 +43,9 @@ public class Pager extends FragmentStatePagerAdapter {
     @Override
     public int getCount() {
         return tabCount;
+    }
+
+    public void editTab2Text(double hornProb, double cryProb, double ambientProb){
+        tab2.editValue(hornProb, cryProb, ambientProb);
     }
 }
