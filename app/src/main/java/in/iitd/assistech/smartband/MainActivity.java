@@ -1,6 +1,7 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
@@ -25,6 +26,8 @@ import android.util.TimingLogger;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.io.File;
 import java.io.FileWriter;
