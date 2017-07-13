@@ -1,40 +1,33 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.util.TimingLogger;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.firebase.auth.FirebaseAuth;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.concurrent.Callable;
 
 import jxl.Cell;
 import jxl.Sheet;
@@ -47,7 +40,7 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
     private TabLayout tabLayout;
     private ViewPager viewPager;
-    private Pager adapter;
+    static Pager adapter;
 
     static double[][] inputWeights;
     static double[][] layerWeights;
@@ -56,36 +49,21 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     static double[][] meanTrain;
     static double[][] devTrain;
 
-    boolean isPrepNN = false;
+    static boolean isPrepNN = false;
     double[][] inputFeat;
-
-    double hornProb;
-    double cryProb;
-    double ambientProb;
 
     private static int PROB_MSG_HNDL = 123;
 
-    private static int TW = 50; //analysis frame duration (ms)
-    private static int TS = 25; //analysis frame shit (ms)
-    private static double alpha = 0.97; //pre-emphasis factor
-    private static int[] range = {300, 5000}; // frequency range
-    private static int M = 26; //number of filterbank channels
-    private static int N = 20; // number of mfcc
-    private static int L = 22; //liftering coefficient
-
-    MFCCMatlab mfcc; // instance of class MFCCMatlab
-
     /**---------------**/
-
+    MainProcessing mProcessing;
     /**---------------**/
 
     /***Variables for audiorecord*/
     private static int REQUEST_MICROPHONE = 101;
-    private static final int RECORDER_SAMPLERATE = 48000;
-    private static final int PROCESS_LENGTH = 24000;
-    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
-    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int RECORD_TIME_DURATION = 3000; //0.5 seconds
+    public static final int RECORDER_SAMPLERATE = 44100;
+    public static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+    public static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    public static final int RECORD_TIME_DURATION = 500; //0.5 seconds
 
     private AudioRecord recorder = null;
     private Thread recordingThread = null;
@@ -93,20 +71,18 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     int bufferSize;
     int BufferElements2Rec;
     int BytesPerElement;
-    short[] sData;
-    short[] sDataPart1 = new short[PROCESS_LENGTH];
+    public static short[] sData;
 
-    /**Hurray**/
-    /**The final shit that we need is here**/
-    double[] featSound; //160 features of 250 ms audio
-    /****/
 
-    Handler handler = new Handler(){
+    static Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
             if(msg.getData().getInt("what") == PROB_MSG_HNDL){
                 //TODO create an instance of Tab2 fragment and call editValue()
-                adapter.editTab2Text(hornProb, cryProb, ambientProb);
+                double hornProb = msg.getData().getDouble("hornProb");
+                double gunShotProb = msg.getData().getDouble("gunShotProb");
+                double dogBarkProb = msg.getData().getDouble("dogBarkProb");
+                adapter.editTab2Text(hornProb, gunShotProb, dogBarkProb);
             }
         }
     };
@@ -114,7 +90,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
+
 
         //Adding toolbar to the activity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -298,24 +276,16 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                     public void run() {
                         while (isRecording) {
                             synchronized (this){
-                                TimingLogger recordLogger = new TimingLogger(TAG, "recordingThread");
-                                recordLogger.addSplit("Before recorder");
                                 sData = new short[BufferElements2Rec];
                                 // gets the voice output from microphone to byte format
                                 recorder.read(sData, 0, BufferElements2Rec);
-                                recordLogger.addSplit("After recorder");
 
                                 //TODO: Properly make the partition of sData
-                                sDataPart1 = Arrays.copyOfRange(sData, 0, PROCESS_LENGTH);
-                                //sDataPart2 = Arrays.copyOfRange(sData, PROCESS_LENGTH, 2*PROCESS_LENGTH);
-                                //sDataPart3 = Arrays.copyOfRange(sData, 2*PROCESS_LENGTH, 3*PROCESS_LENGTH);
-                                //sDataPart4 = Arrays.copyOfRange(sData, 3*PROCESS_LENGTH, 4*PROCESS_LENGTH);
-                                //sDataPart5 = Arrays.copyOfRange(sData, 4*PROCESS_LENGTH, 5*PROCESS_LENGTH);
-                                //sDataPart6 = Arrays.copyOfRange(sData, 5*PROCESS_LENGTH, 6*PROCESS_LENGTH);
+//                                sDataPart1 = Arrays.copyOfRange(sData, 0, PROCESS_LENGTH);
 
-                                recordLogger.addSplit("Copy sData");
-                                processAudioEvent();
-                                recordLogger.dumpToLog();
+//                                TODO:processAudioEvent();
+                                mProcessing = new MainProcessing(MainActivity.this);
+                                mProcessing.processAudioEvent();
                             }
                         }
                     }
@@ -338,89 +308,6 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         }
     }
 
-    //Called in processMicSound
-    public void processAudioEvent() {
-        if (!isPrepNN) {
-            Toast.makeText(this, "Press Again", Toast.LENGTH_SHORT).show();
-        } else {
-
-            Thread featThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (this) {
-                        TimingLogger featThreadLogger = new TimingLogger(TAG, "featThread");
-                        featThreadLogger.addSplit("Start");
-
-                        featSound = new double[160];
-                        mfcc = new MFCCMatlab(sDataPart1, RECORDER_SAMPLERATE, TW, TS, alpha, range, M, N, L);
-                        featSound = mfcc.getFeatSound();
-
-                        //TODO: Check that inputFeat is 160x1 vector. Replace it with featSound at later stage.
-                        //Normalize input feature with training mean and deviation
-                        for (int i = 0; i < featSound.length; i++) {
-                            featSound[i] = (featSound[i] - meanTrain[i][0]) / devTrain[i][0];
-                        }
-
-                        double[] hiddenNodes = new double[inputWeights.length];
-                        for (int i = 0; i < inputWeights.length; i++) {
-                            double sum = 0;
-                            for (int j = 0; j < inputWeights[0].length; j++) {
-                                sum += inputWeights[i][j] * featSound[j];
-                            }
-                            hiddenNodes[i] = tansig(sum + inputBias[i][0]);
-                        }
-
-                        double[] outputNodes = new double[layerWeights.length];
-                        for (int i = 0; i < layerWeights.length; i++) {
-                            double sum = 0;
-                            for (int j = 0; j < layerWeights[0].length; j++) {
-                                sum += layerWeights[i][j] * hiddenNodes[j];
-                            }
-                            outputNodes[i] = sum + outputBias[i][0];
-                        }
-
-                        double sum = 0.0;
-                        for (int i = 0; i < outputNodes.length; i++) {
-                            sum += Math.exp(outputNodes[i]);
-                        }
-
-                        for (int i = 0; i < outputNodes.length; i++) {
-                            outputNodes[i] = softmax(outputNodes[i], sum);
-                        }
-
-                        hornProb = outputNodes[0];
-                        ambientProb = outputNodes[1];
-                        cryProb = outputNodes[2];
-
-                        for (int i = 0; i < outputNodes.length; i++) {
-                            System.out.println("Main Activity line 243  " + Double.toString(outputNodes[i]));
-                        }
-
-                        Message msg = new Message();
-                        Bundle bundle = new Bundle();
-                        bundle.putInt("what", PROB_MSG_HNDL);
-                        msg.setData(bundle);
-                        handler.sendMessage(msg);
-                        featThreadLogger.addSplit("FeatSound calculated");
-                        featThreadLogger.dumpToLog();
-                    }
-                }
-            });
-            featThread.start();
-        }
-    }
-
-    private double tansig(double x) {
-        return ((2.0 / (1 + Math.exp(-2*x))) - 1.0);
-    }
-
-    private double softmax(double outputNode, double sum) {
-        double temp = Math.exp(outputNode);
-        System.out.println("Main Activity line 268 - temp " + Double.toString(outputNode)+ ","+ Double.toString(temp));
-        System.out.println("Main Activity line 269 - SUM " + Double.toString(sum));
-        return (temp/sum);
-    }
-
     /**---------------------------------------**/
 
     /**-----------For Tab Layout--------------**/
@@ -439,5 +326,19 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
     }
 
-    /**---------------------------------------**/
+    static void setProbOut(double[] outProb){
+//        adapter.editTab2Text(outProb[0], outProb[1], outProb[2]);
+        double hornProb = (outProb[0]);
+        double dogBarkProb = (outProb[1]);
+        double gunShotProb = (outProb[2]);
+
+        final Message msg = new Message();
+        final Bundle bundle = new Bundle();
+        bundle.putInt("what", PROB_MSG_HNDL);
+        bundle.putDouble("hornProb", hornProb);
+        bundle.putDouble("dogBarkProb", dogBarkProb);
+        bundle.putDouble("gunShotProb", gunShotProb);
+        msg.setData(bundle);
+        handler.sendMessage(msg);
+    }
 }

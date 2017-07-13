@@ -33,7 +33,7 @@ public class Vec2Frame {
         this.padding = padding;
 
         L = vec.length;
-        M = (int)Math.floor((L-NW)*1.0/((NS+1)*1.0));
+        M = (int)Math.floor((L-NW)*1.0/((NS+1)*1.0) + 1.0);
 
         TimingLogger timingVec2Frame = new TimingLogger(TAG, "Vec2Frame - setter");
 
@@ -54,7 +54,7 @@ public class Vec2Frame {
         //only made for case as no padding is required
         if(!padding){
             //TODO: Check if it is (M-1)*NS+NW) (originally written) or (M-1)*NW+NS
-            //vec = Arrays.copyOfRange(vec, 0, ((M-1)*NW+NS));
+//            vec = Arrays.copyOfRange(vec, 0, ((M-1)*NW+NS));
         } else{
             Log.e(TAG, "Padding is not false");
         }
@@ -62,7 +62,6 @@ public class Vec2Frame {
         timings.addSplit("Check padding");
 
         if(direction == "cols"){
-
             indexes = new int[NW][M];
             frames = new double[NW][M];
 

@@ -1,55 +1,55 @@
 package in.iitd.assistech.smartband;
 
-
-import android.graphics.Matrix;
 import android.util.Log;
 import android.util.TimingLogger;
+
+import static in.iitd.assistech.smartband.MainActivity.RECORDER_SAMPLERATE;
+import static in.iitd.assistech.smartband.MainProcessing.L;
+import static in.iitd.assistech.smartband.MainProcessing.M;
+import static in.iitd.assistech.smartband.MainProcessing.N;
+import static in.iitd.assistech.smartband.MainProcessing.TS;
+import static in.iitd.assistech.smartband.MainProcessing.TW;
+import static in.iitd.assistech.smartband.MainProcessing.alpha;
+import static in.iitd.assistech.smartband.MainProcessing.range;
 
 public class MFCCMatlab {
 
     private static final String TAG = "MFCCMatlab";
 
-    static double[] speech; //Input speech signal as vector
-    static short[] speechShort; //short[] input signal, no need to multiply with 2^15
-    static int FS; //Sampling Frequency
-    static int TW; //Analysis frame duration
-    static int TS; //Analysis frame shift
-    static double alpha; //pre-emphasis coefficient
-    static int[] range; //frequency range for filterbank analysis
-    static int M; //number of filterbank channels
-    static int N; //number of cepstral coefficient
-    static int L; //cepstral sine lifter parameter
+    private static double[] speech; //Input speech signal as vector
+    private static short[] speechShort; //short[] input signal, no need to multiply with 2^15
 
-    static int NW; //frame duration (samples)
-    static int NS; //frame shift (samples)
-    static int nfft; // length of FFT analysis
-    static int K; //length of uniques part of the FFT
+    private static int NW; //frame duration (samples)
+    private static int NS; //frame shift (samples)
+    private static int nfft; // length of FFT analysis
+    private static int K; //length of uniques part of the FFT
 
-    double[][] CC;
-    double[][] final_CC;
-    double[][] FBE;
-    double[][] frames;
-    double[][] MAG;
+    private double[][] CC;
+    private double[][] final_CC;
+    private double[][] FBE;
+    private double[][] frames;
+    private double[][] MAG;
 
-    double[] featSound;
+    private double[] featSound;
+
+    private int featSoundLength;
 
 
-    public MFCCMatlab(short[] speech, int FS, int TW, int TS, double alpha,
-                      int[] range, int M, int N, int L){
+    public MFCCMatlab(short[] speech){
+//            (short[] speech, int FS, int TW, int TS, double alpha,
+//                      int[] range, int M, int N, int L){
         this.speechShort = speech;
-        this.FS = FS;
-        this.TW = TW;
-        this.TS = TS;
-        this.alpha = alpha;
-        this.range = range;
-        this.M = M;
-        this.N = N;
-        this.L = L;
+//        this.FS = FS;
+//        this.TW = TW;
+//        this.TS = TS;
+//        this.alpha = alpha;
+//        this.range = range;
+//        this.M = M;
+//        this.N = N;
+//        this.L = L;
 
-        speech = new short[speechShort.length];
-
-        NW = (int) Math.round(Math.pow(10, -3)*TW*FS);
-        NS = (int) Math.round(Math.pow(10, -3)*TS*FS);
+        NW = (int) Math.round(Math.pow(10, -3)*TW*RECORDER_SAMPLERATE);
+        NS = (int) Math.round(Math.pow(10, -3)*TS*RECORDER_SAMPLERATE);
 
         //next power of 2 greater than NW
         nfft = NW == 0 ? 0 : 32 - Integer.numberOfLeadingZeros(NW - 1);
@@ -95,6 +95,7 @@ public class MFCCMatlab {
         /**MAG = abs( fft(frames,nfft,1) );**/
         MAG = new double[nfft][frames[0].length];
 
+//        Log.e(TAG, Integer.toString(frames[0].length) + " Frames[] length");
         for(int j=0; j<frames[0].length; j++){
             Complex[] temp = new Complex[nfft];
             for(int i=0; i<frames.length; i++){
@@ -118,7 +119,7 @@ public class MFCCMatlab {
         /**FBE = H * MAG(1:K,:);**/
         //FBE = M x frames[0].length
         double[][] H;
-        TrifBank trifBank = new TrifBank(M, K, range, FS);
+        TrifBank trifBank = new TrifBank(M, K, range, RECORDER_SAMPLERATE);
         H = trifBank.getH();
 
         timingMfccProcess.addSplit("TrifBank getH");
@@ -191,23 +192,41 @@ public class MFCCMatlab {
         timingMfccProcess.dumpToLog();
     }
 
-    private void calcFeatSound() {
+    private void calcFeatSound(){
+//        Log.e(TAG, "Size CC : " + Integer.toString(final_CC.length) +  ", " + Integer.toString(final_CC[0].length));
+        double[][] CC_total = new double[final_CC.length][ (2 * final_CC[0].length) - 1];
+        for(int i=0; i<CC_total.length; i++){
+            for(int j=0; j<final_CC[0].length; j++){
+                CC_total[i][j] = final_CC[i][j];
+            }
+            for(int j=0; j<(final_CC[0].length-1); j++){
+                CC_total[i][j + final_CC[0].length] = final_CC[i][j+1] - final_CC[i][j+1];
+            }
+        }
+
+        featSoundLength = CC_total.length*CC_total[0].length;
+        featSound = new double[featSoundLength];
+        featSound = mat2array(CC_total);
+    }
+
+    /*private void calcFeatSound() {
         double[][] transposeCC = transpose(final_CC);
-        double[][] newCC = new double[8][transposeCC[0].length];
+        double[][] newCC = new double[transposeCC.length][transposeCC[0].length];
         for(int i=0; i<newCC.length; i++){
             for(int j=0; j<(newCC[0].length); j++){ //TODO Add +1 in length
                 newCC[i][j] = transposeCC[i][j];
             }
         }
 
-        featSound = new double[newCC.length*newCC[0].length];
+        featSoundLength = newCC.length*newCC[0].length;
+        featSound = new double[featSoundLength];
         featSound = mat2array(newCC);
         //TODO: currently values of featSound are half of what they should be, find out why and then remove this for loop
         for (int i=0; i<featSound.length; i++){
             featSound[i] = 2*featSound[i];
         }
         System.out.println("Length of featSound : " + featSound.length);
-    }
+    }*/
 
     //Type III DCT matrix routine
     //uses N and M as input
@@ -367,6 +386,10 @@ public class MFCCMatlab {
 
     public double[][] getFrames(){
         return frames;
+    }
+
+    public int getFeatSoundLength(){
+        return featSoundLength;
     }
 
     public double[] getFeatSound() {

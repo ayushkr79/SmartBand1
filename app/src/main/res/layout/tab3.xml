@@ -5,57 +5,43 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/textView"
+    <ListView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:text="Tab 3"
-        android:textAppearance="?android:attr/textAppearanceLarge"/>
-    <de.hdodenhof.circleimageview.CircleImageView
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/profile_image"
-        android:layout_width="96dp"
-        android:layout_height="96dp"
-        android:layout_above="@+id/textView"
-        app:civ_border_width="2dp"
-        app:civ_border_color="#FF000000" />
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/relativeLayout">
+        android:id="@+id/profileListView">
+    </ListView>
 
-
-        <TextView
-            android:id="@+id/nameText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:text="TextView" />
-        <TextView
-            android:id="@+id/emailText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            android:text="TextView" />
-
-    </RelativeLayout>
-
-    <ImageView
-        android:id="@+id/imageView"
+    <ListView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/textView"
-        android:layout_alignLeft="@+id/textView"
-        android:layout_alignStart="@+id/textView"
-        android:layout_marginBottom="595dp"
-        app:srcCompat="@android:drawable/btn_dropdown" />
+        android:id="@+id/settingsListView"
+        android:layout_below="@+id/profileListView">
+    </ListView>
+
+    <!--<de.hdodenhof.circleimageview.CircleImageView-->
+        <!--xmlns:app="http://schemas.android.com/apk/res-auto"-->
+        <!--android:id="@+id/profile_image"-->
+        <!--android:layout_width="96dp"-->
+        <!--android:layout_height="96dp"-->
+        <!--android:layout_below="@+id/settingsListView"-->
+        <!--app:civ_border_width="2dp"-->
+        <!--app:civ_border_color="#FF000000" />-->
+
+    <!--<ImageView-->
+        <!--android:id="@+id/imageView"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_above="@+id/textView"-->
+        <!--android:layout_alignLeft="@+id/textView"-->
+        <!--android:layout_alignStart="@+id/textView"-->
+        <!--android:layout_marginBottom="595dp"-->
+        <!--app:srcCompat="@android:drawable/btn_dropdown" />-->
 
     <Button
         android:id="@+id/signOutButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/textView"
+        android:layout_below="@+id/settingsListView"
         android:layout_centerHorizontal="true"
         android:text="SignOut" />
 
@@ -63,7 +49,7 @@
         android:id="@+id/revokeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/signOutButton"
+        android:layout_below="@+id/signOutButton"
         android:layout_centerHorizontal="true"
         android:text="Revoke" />
 

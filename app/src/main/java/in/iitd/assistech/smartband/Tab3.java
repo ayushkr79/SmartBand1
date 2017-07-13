@@ -7,13 +7,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.Toast;
 
 //import com.bumptech.glide.Glide;
@@ -63,10 +64,12 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .build();
         // [END config_signin]
-        mGoogleApiClient = new GoogleApiClient.Builder(getContext())
-                .enableAutoManage(getActivity() /* FragmentActivity */, this /* OnConnectionFailedListener */)
-                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
-                .build();
+        if(mGoogleApiClient == null){
+            mGoogleApiClient = new GoogleApiClient.Builder(getContext())
+                    .enableAutoManage(getActivity() /* FragmentActivity */, this /* OnConnectionFailedListener */)
+                    .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                    .build();
+        }
 
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
@@ -79,6 +82,36 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
         uid = user.getUid();
         updateUI();
 
+        /**---------Custom List View -------**/
+        String[] string = {name};
+//        String[] string = {name, email};
+        ListAdapter customListAdapter = new CustomListAdapter(getContext(),string);// Pass the food arrary to the constructor.
+        ListView customListView = (ListView) view.findViewById(R.id.profileListView);
+        customListView.setAdapter(customListAdapter);
+
+        customListView.setOnItemClickListener(
+                new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        Toast.makeText(getActivity(),"Profile List Clicked", Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+
+        final String[] settingListItems = {"Notification Settings", "Custom Sound", "About Us"};
+        ListAdapter settingsListAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_1, settingListItems);
+        ListView settingsListView = (ListView) view.findViewById(R.id.settingsListView);
+        settingsListView.setAdapter(settingsListAdapter);
+        settingsListView.setOnItemClickListener(
+                new AdapterView.OnItemClickListener(){
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        String setting = String.valueOf(parent.getItemAtPosition(position));
+                        Toast.makeText(getActivity(), setting, Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+        /**--------------------------------**/
         return view;
     }
 
@@ -92,6 +125,14 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
                 revokeAccess();
                 break;
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        mGoogleApiClient.stopAutoManage(getActivity());
+        mGoogleApiClient.disconnect();
     }
 
     //TODO: Call this method from Tab3
@@ -132,8 +173,8 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     }
 
     private void updateUI(){
-        CircleImageView profilePic = (CircleImageView)view.findViewById(R.id.profile_image);
-        profilePic.setImageURI(photoUrl);
+//        CircleImageView profilePic = (CircleImageView)view.findViewById(R.id.profile_image);
+//        profilePic.setImageURI(photoUrl);
         //ImageView imageView = (ImageView)view.findViewById(R.id.imageView);
         //imageView.setImageURI(photoUrl);
 
@@ -143,11 +184,6 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
         String mUserprofileUrl = photoUrl.toString();
         Log.d(TAG, name + email);
         Log.d(TAG, photoUrl.toString());
-
-        TextView nameText = (TextView)view.findViewById(R.id.nameText);
-        TextView emailText = (TextView)view.findViewById(R.id.emailText);
-        nameText.setText(name);
-        emailText.setText(email);
 
         // Name, email address, and profile photo Url
 
