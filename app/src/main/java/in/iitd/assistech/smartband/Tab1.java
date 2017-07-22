@@ -5,11 +5,13 @@ import android.content.pm.PackageManager;
 import android.media.Image;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,6 +25,7 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import static android.app.Activity.RESULT_OK;
 
@@ -30,12 +33,13 @@ public class Tab1 extends Fragment implements View.OnClickListener {
 
     public ListView sttListView;
     private ImageButton speakButton;
-    private ImageButton ttsSendButton;
+//    private ImageButton ttsSendButton;
     private View view;
 
     private EditText messageET;
     private ListView messagesContainer;
     private Button sendBtn;
+    private TextToSpeech msgTTS;
     private ChatAdapter adapter;
     private ArrayList<ChatMessage> chatHistory;
 
@@ -44,16 +48,12 @@ public class Tab1 extends Fragment implements View.OnClickListener {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
-        view = inflater.inflate(R.layout.activity_chat, container, false);
-//        view = inflater.inflate(R.layout.tab1, container, false);
+        view = inflater.inflate(R.layout.tab1, container, false);
         //Returning the layout file after inflating
         //Change R.layout.tab1 in you classes
 
-        /**
         speakButton = (ImageButton) view.findViewById(R.id.speakButton);
         speakButton.setOnClickListener(this);
-        sttListView = (ListView) view.findViewById(R.id.sttListView);
-        ttsSendButton = (ImageButton)view.findViewById(R.id.tts_send_button);
 
 
         // Check to see if a recognition activity is present
@@ -69,8 +69,18 @@ public class Tab1 extends Fragment implements View.OnClickListener {
             Toast.makeText(getActivity(), "Recognizer not present", Toast.LENGTH_SHORT).show();
 //            speakButton.setText("Recognizer not present");
         }
-         **/
+
+
         initControls();
+
+        msgTTS = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener(){
+            @Override
+            public void onInit(int status) {
+                if(status != TextToSpeech.ERROR) {
+                    msgTTS.setLanguage(Locale.US);
+                }
+            }
+        });
 
         return view;
     }
@@ -89,8 +99,23 @@ public class Tab1 extends Fragment implements View.OnClickListener {
         if (view.getId() == R.id.speakButton) {
             startVoiceRecognitionActivity();
         }
-        if (view.getId() == R.id.tts_send_button){
-            //TODO: add row in the list
+
+        if (view.getId() == R.id.chatSendButton){
+            String messageText = messageET.getText().toString();
+            if (TextUtils.isEmpty(messageText)) {
+                return;
+            }
+
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setId(122);//dummy
+            chatMessage.setMessage(messageText);
+            chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
+            chatMessage.setMe(true);
+
+            messageET.setText("");
+
+            displayMessage(chatMessage);
+            msgTTS.speak(messageText, TextToSpeech.QUEUE_FLUSH, null);
         }
     }
 
@@ -99,31 +124,23 @@ public class Tab1 extends Fragment implements View.OnClickListener {
         messageET = (EditText) view.findViewById(R.id.messageEdit);
         sendBtn = (Button) view.findViewById(R.id.chatSendButton);
 
+        adapter = new ChatAdapter(getActivity(), new ArrayList<ChatMessage>());
+        messagesContainer.setAdapter(adapter);
+        messagesContainer.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                ChatMessage clickedMsg = adapter.getItem(i);
+                String toSpeak = clickedMsg.getMessage();
+                msgTTS.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+            }
+        });
+
         TextView meLabel = (TextView) view.findViewById(R.id.meLbl);
         TextView companionLabel = (TextView) view.findViewById(R.id.friendLabel);
         RelativeLayout container = (RelativeLayout) view.findViewById(R.id.container);
         companionLabel.setText("My Buddy");// Hard Coded
-        loadDummyHistory();
 
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String messageText = messageET.getText().toString();
-                if (TextUtils.isEmpty(messageText)) {
-                    return;
-                }
-
-                ChatMessage chatMessage = new ChatMessage();
-                chatMessage.setId(122);//dummy
-                chatMessage.setMessage(messageText);
-                chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-                chatMessage.setMe(true);
-
-                messageET.setText("");
-
-                displayMessage(chatMessage);
-            }
-        });
+        sendBtn.setOnClickListener(this);
     }
 
     public void displayMessage(ChatMessage message) {
@@ -136,38 +153,28 @@ public class Tab1 extends Fragment implements View.OnClickListener {
         messagesContainer.setSelection(messagesContainer.getCount() - 1);
     }
 
-    private void loadDummyHistory(){
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == VOICE_RECOGNITION_REQUEST_CODE && resultCode == RESULT_OK) {
 
-        chatHistory = new ArrayList<ChatMessage>();
+            ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            String voiceText = matches.get(0);
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setId(122);//dummy
+            chatMessage.setMessage(voiceText);
+            chatMessage.setDate(DateFormat.getDateTimeInstance().format(new Date()));
+            chatMessage.setMe(false);
 
-        ChatMessage msg = new ChatMessage();
-        msg.setId(1);
-        msg.setMe(false);
-        msg.setMessage("Hi");
-        msg.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-        chatHistory.add(msg);
-        ChatMessage msg1 = new ChatMessage();
-        msg1.setId(2);
-        msg1.setMe(false);
-        msg1.setMessage("How r u doing???");
-        msg1.setDate(DateFormat.getDateTimeInstance().format(new Date()));
-        chatHistory.add(msg1);
-
-        adapter = new ChatAdapter(getActivity(), new ArrayList<ChatMessage>());
-        messagesContainer.setAdapter(adapter);
-
-        for(int i=0; i<chatHistory.size(); i++) {
-            ChatMessage message = chatHistory.get(i);
-            displayMessage(message);
+            displayMessage(chatMessage);
         }
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == VOICE_RECOGNITION_REQUEST_CODE && resultCode == RESULT_OK) {
-            ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            sttListView.setAdapter(new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, matches));
-
+    public void onDestroy() {
+        if(msgTTS !=null){
+            msgTTS.stop();
+            msgTTS.shutdown();
         }
+        super.onDestroy();
     }
 }

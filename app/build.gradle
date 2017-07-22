@@ -40,20 +40,21 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:appcompat-v7:25.3.1'
     //TODO: Changed the error to warning level
+    
+
+    compile files('libs/jxl.jar')
+    //    compile 'com.google.android.gms:play-services-analytics:11.0.1'
+
+    
+    //    compile 'com.firebaseui:firebase-ui-storage:0.6.0'
+    compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support:design:25.3.1'
     compile 'com.google.android.gms:play-services-auth:11.0.1'
-
     compile 'com.google.firebase:firebase-auth:11.0.1'
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
-    compile files('libs/jxl.jar')
-    testCompile 'org.testng:testng:6.9.6'
-//    compile 'com.google.android.gms:play-services-analytics:11.0.1'
-
     compile 'com.facebook.android:facebook-android-sdk:4.23.0'
-
     compile 'de.hdodenhof:circleimageview:2.1.0'
-//    compile 'com.firebaseui:firebase-ui-storage:0.6.0'
+    testCompile 'org.testng:testng:6.9.6'
 }
 apply plugin: 'com.google.gms.google-services'

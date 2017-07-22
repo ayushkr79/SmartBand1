@@ -2,6 +2,7 @@ package in.iitd.assistech.smartband;
 
 import android.content.Context;
 import android.graphics.Point;
+import android.media.Image;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -10,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 public class Tab2 extends Fragment implements View.OnClickListener{
@@ -22,6 +24,9 @@ public class Tab2 extends Fragment implements View.OnClickListener{
     private TextView ambientValue;
     private Button micReadButton;
     private Button stopRecordButton;
+
+    private ImageButton startButton;
+    private ImageButton stopButton;
 
     private OnTabEvent mListener;
 
@@ -44,8 +49,16 @@ public class Tab2 extends Fragment implements View.OnClickListener{
         micReadButton = (Button)view.findViewById(R.id.micReadButton);
         stopRecordButton = (Button)view.findViewById(R.id.stopRecordButton);
 
+        startButton = (ImageButton)view.findViewById(R.id.start_button);
+        startButton.setImageResource(R.drawable.start_button_small);
+
+        stopButton = (ImageButton)view.findViewById(R.id.stop_button);
+        stopButton.setImageResource(R.drawable.stop_button);
+
         micReadButton.setOnClickListener(this);
+        startButton.setOnClickListener(this);
         stopRecordButton.setOnClickListener(this);
+        stopButton.setOnClickListener(this);
 
         return view;
     }
@@ -56,21 +69,25 @@ public class Tab2 extends Fragment implements View.OnClickListener{
             case R.id.micReadButton:
                 //TODO
                 mListener.onButtonClick("MicReadButton");
-                /**Location is (0, 628)**/
-//                Point point = getPointOfView(view);
-//                Log.e(TAG, "view point x,y (" + point.x + ", " + point.y + ")");
                 break;
             case R.id.stopRecordButton:
                 //TODO
                 mListener.onButtonClick("StopRecordButton");
                 break;
-        }
-    }
 
-    private Point getPointOfView(View view) {
-        int[] location = new int[2];
-        view.getLocationInWindow(location);
-        return new Point(location[0], location[1]);
+            case R.id.start_button:
+                //TODO
+                mListener.onButtonClick("MicReadButton");
+                startButton.setVisibility(View.GONE);
+                stopButton.setVisibility(View.VISIBLE);
+                break;
+            case R.id.stop_button:
+                //TODO
+                mListener.onButtonClick("StopRecordButton");
+                startButton.setVisibility(View.VISIBLE);
+                stopButton.setVisibility(View.GONE);
+                break;
+        }
     }
 
     @Override

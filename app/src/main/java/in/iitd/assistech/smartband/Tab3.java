@@ -15,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 //import com.bumptech.glide.Glide;
@@ -32,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -98,7 +100,7 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
                 }
         );
 
-        final String[] settingListItems = {"Notification Settings", "Custom Sound", "About Us"};
+        final String[] settingListItems = {"Custom Sound", "About Us"};
         ListAdapter settingsListAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_1, settingListItems);
         ListView settingsListView = (ListView) view.findViewById(R.id.settingsListView);
         settingsListView.setAdapter(settingsListAdapter);
@@ -107,11 +109,27 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                         String setting = String.valueOf(parent.getItemAtPosition(position));
-                        Toast.makeText(getActivity(), setting, Toast.LENGTH_LONG).show();
                     }
                 }
         );
         /**--------------------------------**/
+        /**Spinner List items**/
+        final String[] select_qualification = {
+                "Notification Options", "Flashlight", "Vibration", "Sound", "Flash Screen"};
+        Spinner spinner = (Spinner) view.findViewById(R.id.notification_spinner);
+
+        ArrayList<StateVO> listVOs = new ArrayList<>();
+
+        for (int i = 0; i < select_qualification.length; i++) {
+            StateVO stateVO = new StateVO();
+            stateVO.setTitle(select_qualification[i]);
+            stateVO.setSelected(false);
+            listVOs.add(stateVO);
+        }
+        SpinnerAdapter myAdapter = new SpinnerAdapter(getActivity(), 0, listVOs);
+        spinner.setAdapter(myAdapter);
+        /**------------------*/
+
         return view;
     }
 
