@@ -14,16 +14,16 @@
     <ListView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/settingsListView"
+        android:id="@+id/notificationListView"
         android:layout_below="@+id/profileListView">
     </ListView>
 
-    <Spinner
-        android:id="@+id/notification_spinner"
+    <ListView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@+id/profileListView" />
+        android:id="@+id/settingsListView"
+        android:layout_below="@+id/notificationListView">
+    </ListView>
 
     <!--<de.hdodenhof.circleimageview.CircleImageView-->
         <!--xmlns:app="http://schemas.android.com/apk/res-auto"-->

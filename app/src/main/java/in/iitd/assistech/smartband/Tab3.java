@@ -1,13 +1,16 @@
 package in.iitd.assistech.smartband;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,6 +45,13 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     public View view;
     private static final String TAG = "Tab3";
 
+    private NotifListAdapter notifListAdapter;
+
+    public static boolean VIBRATION = false;
+    public static boolean SOUND = false;
+    public static boolean FLASHLIGHT = false;
+    public static boolean FLASHSCREEN = false;
+
     private FirebaseUser user;
     private FirebaseAuth mAuth;
     private GoogleApiClient mGoogleApiClient;
@@ -52,14 +62,24 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     private Uri photoUrl;
 
     Bitmap profileBM;
+
+    private boolean isFlashlight;
+
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
 
+        isFlashlight = getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         view = inflater.inflate(R.layout.tab3, container, false);
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -112,23 +132,20 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
                     }
                 }
         );
+
+        final String[] notificationListItems = {"Vibration", "Sound", "Flashlight", "Flash Screen"};
+        notifListAdapter = new NotifListAdapter(getContext(), notificationListItems);
+        ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
+        notifListView.setAdapter(notifListAdapter);
+        notifListView.setOnItemClickListener(
+                new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        notifListAdapter.toggle(position);
+                    }
+                }
+        );
         /**--------------------------------**/
-        /**Spinner List items**/
-        final String[] select_qualification = {
-                "Notification Options", "Flashlight", "Vibration", "Sound", "Flash Screen"};
-        Spinner spinner = (Spinner) view.findViewById(R.id.notification_spinner);
-
-        ArrayList<StateVO> listVOs = new ArrayList<>();
-
-        for (int i = 0; i < select_qualification.length; i++) {
-            StateVO stateVO = new StateVO();
-            stateVO.setTitle(select_qualification[i]);
-            stateVO.setSelected(false);
-            listVOs.add(stateVO);
-        }
-        SpinnerAdapter myAdapter = new SpinnerAdapter(getActivity(), 0, listVOs);
-        spinner.setAdapter(myAdapter);
-        /**------------------*/
 
         return view;
     }

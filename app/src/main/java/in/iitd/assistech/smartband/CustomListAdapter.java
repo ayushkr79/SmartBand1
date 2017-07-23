@@ -22,7 +22,7 @@ class CustomListAdapter extends ArrayAdapter<String>{
         LayoutInflater myCustomInflater = LayoutInflater.from(getContext());
         View customView = myCustomInflater.inflate(R.layout.custom_first_row, parent, false);
         // get references.
-        //String singleFoodItem = getItem(position);
+
         TextView nameText = (TextView) customView.findViewById(R.id.userNameText);
 //        TextView emailText = (TextView) customView.findViewById(R.id.userEmailIdText);
         String name = getItem(position);
