@@ -16,12 +16,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckedTextView;
+import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 //import com.bumptech.glide.Glide;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.annotation.GlideModule;
+import com.bumptech.glide.module.AppGlideModule;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
@@ -45,12 +53,15 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     public View view;
     private static final String TAG = "Tab3";
 
-    private NotifListAdapter notifListAdapter;
+    static final String[] notificationListItems = {"Vibration", "Sound", "Flashlight", "Flash Screen"};
+    static final String[] soundListItems = {"Vehicle Horn", "Dog Bark", "GunShot"};
 
-    public static boolean VIBRATION = false;
-    public static boolean SOUND = false;
-    public static boolean FLASHLIGHT = false;
-    public static boolean FLASHSCREEN = false;
+    private NotifListAdapter notifListAdapter;
+    private NotifListAdapter soundListAdapter;
+
+    private CircleImageView userProfileImage;
+    private TextView userName;
+    private TextView userEmail;
 
     private FirebaseUser user;
     private FirebaseAuth mAuth;
@@ -61,13 +72,23 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     private String email;
     private Uri photoUrl;
 
-    Bitmap profileBM;
-
-    private boolean isFlashlight;
-
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+
+        boolean[] notifSwitchState = new boolean[notificationListItems.length];
+        boolean[] soundSwitchState = new boolean[soundListItems.length];
+
+        Log.e(TAG, "FUCK YOU!!!!!!!!!!!!!!!!!!!!!!");
+        for (int i=0; i<notificationListItems.length; i++){
+            notifSwitchState[i] = notifListAdapter.getCheckedState(i);
+        }
+        for (int i=0; i<soundListItems.length; i++){
+            soundSwitchState[i] = soundListAdapter.getCheckedState(i);
+        }
+
+        outState.putBooleanArray("notifState", notifSwitchState);
+        outState.putBooleanArray("soundState", soundSwitchState);
     }
 
     @Override
@@ -79,8 +100,12 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
 
-        isFlashlight = getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
         view = inflater.inflate(R.layout.tab3, container, false);
+//        userProfileImage = (ImageView)view.findViewById(R.id.mUserProfilePic);
+        userName = (TextView) view.findViewById(R.id.userName);
+        userEmail = (TextView) view.findViewById(R.id.userEmail);
+
+        userProfileImage = (CircleImageView)view.findViewById(R.id.mUserProfilePic);
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -104,48 +129,45 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
         uid = user.getUid();
         updateUI();
 
-        /**---------Custom List View -------**/
-        String[] string = {name};
-//        String[] string = {name, email};
-        ListAdapter customListAdapter = new CustomListAdapter(getContext(),string);// Pass the food arrary to the constructor.
-        ListView customListView = (ListView) view.findViewById(R.id.profileListView);
-        customListView.setAdapter(customListAdapter);
-
-        customListView.setOnItemClickListener(
-                new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        Toast.makeText(getActivity(),"Profile List Clicked", Toast.LENGTH_LONG).show();
-                    }
-                }
-        );
-
-        final String[] settingListItems = {"Custom Sound", "About Us"};
-        ListAdapter settingsListAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_1, settingListItems);
-        ListView settingsListView = (ListView) view.findViewById(R.id.settingsListView);
-        settingsListView.setAdapter(settingsListAdapter);
-        settingsListView.setOnItemClickListener(
-                new AdapterView.OnItemClickListener(){
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        String setting = String.valueOf(parent.getItemAtPosition(position));
-                    }
-                }
-        );
-
-        final String[] notificationListItems = {"Vibration", "Sound", "Flashlight", "Flash Screen"};
-        notifListAdapter = new NotifListAdapter(getContext(), notificationListItems);
-        ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
-        notifListView.setAdapter(notifListAdapter);
-        notifListView.setOnItemClickListener(
-                new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        notifListAdapter.toggle(position);
-                    }
-                }
-        );
         /**--------------------------------**/
+        if(savedInstanceState != null){
+            boolean[] notifSwitchState = savedInstanceState.getBooleanArray("notifState");
+            boolean[] soundSwitchState = savedInstanceState.getBooleanArray("soundState");
+            Log.e(TAG, notifSwitchState.toString());
+            try{
+                notifListAdapter = new NotifListAdapter(getContext(), notificationListItems, notifSwitchState);
+                ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
+                notifListView.setAdapter(notifListAdapter);
+
+                soundListAdapter = new NotifListAdapter(getContext(), soundListItems, soundSwitchState);
+                ListView soundListView = (ListView) view.findViewById(R.id.soundListView);
+                soundListView.setAdapter(soundListAdapter);
+            }catch(Exception e){
+                Log.e(TAG, e.toString());
+                Toast.makeText(getContext(), e.toString(), Toast.LENGTH_SHORT).show();
+            }
+        } else{
+            notifListAdapter = new NotifListAdapter(getContext(), notificationListItems);
+            ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
+            notifListView.setAdapter(notifListAdapter);
+
+            soundListAdapter = new NotifListAdapter(getContext(), soundListItems);
+            ListView soundListView = (ListView) view.findViewById(R.id.soundListView);
+            soundListView.setAdapter(soundListAdapter);
+        }
+
+        /*try{
+                for (int i=0; i<notificationListItems.length; i++){
+                    View rowview = notifListAdapter.getView(i, null, null);
+                    Switch swtc = (Switch) rowview.findViewById(R.id.notif_row_switch);
+                    swtc.setChecked(notifSwitchState[i]);
+                }
+                for (int i=0; i<soundListItems.length; i++){
+                    View rowview = soundListAdapter.getView(i, null, null);
+                    Switch swtc = (Switch) rowview.findViewById(R.id.notif_row_switch);
+                    swtc.setChecked(soundSwitchState[i]);
+                }*/
+        /**-------------------------------**/
 
         return view;
     }
@@ -208,45 +230,24 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     }
 
     private void updateUI(){
-//        CircleImageView profilePic = (CircleImageView)view.findViewById(R.id.profile_image);
-//        profilePic.setImageURI(photoUrl);
-        //ImageView imageView = (ImageView)view.findViewById(R.id.imageView);
-        //imageView.setImageURI(photoUrl);
-
         name = user.getDisplayName();
         email = user.getEmail();
         photoUrl = user.getPhotoUrl();
         String mUserprofileUrl = photoUrl.toString();
+
+        userName.setText(name);
+        userEmail.setText(email);
+        try{
+            Glide
+                    .with(getContext())
+                    .load(mUserprofileUrl)
+                    .into(userProfileImage);//.placeholder(R.mipmap.ic_launcher).fitCenter()
+        }catch (Exception e){
+            Log.e(TAG, e.toString());
+        }
+
         Log.d(TAG, name + email);
         Log.d(TAG, photoUrl.toString());
-
-        // Name, email address, and profile photo Url
-
-//        CircleImageView profilePic = (CircleImageView)view.findViewById(R.id.profile_image);
-//        try{
-//            Glide.with(getActivity()).load(photoUrl.getPath()).into(profilePic);
-//        }catch (Exception e){
-//            Log.e(TAG, e.toString());
-//        }
-
-//        updateUI();
-    }
-
-    private Bitmap getImageBitmap(String url) {
-        Bitmap bm = null;
-        try {
-            URL aURL = new URL(url);
-            URLConnection conn = aURL.openConnection();
-            conn.connect();
-            InputStream is = conn.getInputStream();
-            BufferedInputStream bis = new BufferedInputStream(is);
-            bm = BitmapFactory.decodeStream(bis);
-            bis.close();
-            is.close();
-        } catch (IOException e) {
-            Log.e(TAG, "Error getting bitmap", e);
-        }
-        return bm;
     }
 
     @Override

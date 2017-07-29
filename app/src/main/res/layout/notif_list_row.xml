@@ -1,16 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="horizontal" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <!--<CheckedTextView-->
+        <!--android:id="@+id/notif_row"-->
+        <!--android:layout_width="fill_parent"-->
+        <!--android:layout_height="50dp"-->
+        <!--android:checked="false"-->
+        <!--android:gravity="center_vertical"-->
+        <!--android:paddingLeft="15dp"-->
+        <!--android:textColor="#000" />-->
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/notif_type"/>
+        android:id="@+id/notif_row_text"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"/>
 
-    <CheckBox
+    <Switch
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/notif_check_box"/>
+        android:id="@+id/notif_row_switch"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"/>
 
-</LinearLayout>
+</RelativeLayout>

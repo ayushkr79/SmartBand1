@@ -268,7 +268,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                             Log.d(TAG, name+ ", "+ email);
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             startActivity(intent);
-                            finish();
+//                            finish();
                             //TODO: updateUI(user);
                         } else {
                             // If sign in fails, display a message to the user.

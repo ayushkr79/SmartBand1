@@ -35,9 +35,9 @@ public class MainProcessing {
     private static final String TAG = "MainProcessing";
     private static int PROB_MSG_HNDL = 123;
 
-    public static int TW = 35; //analysis frame duration (ms)
+    public static int TW = 50; //analysis frame duration (ms)
     public static int TS = (int)Math.floor(0.75*TW); //analysis frame shit (ms)
-    public static int frames = 7;
+    public static int frames = 3;
     public static double alpha = 0.97; //pre-emphasis factor
     public static int[] range = {300, 5000}; // frequency range
     public static int M = 26; //number of filterbank channels
@@ -97,10 +97,9 @@ public class MainProcessing {
                     writeToExcel(filename, frames, TW, TS, M, N, inputNode, timeTaken);
                     Log.e(TAG, "File writer" + timeTaken);
                     /**----------------------------------------**/
-                    //TODO REMOVE THIS
 
-//                    double[] outputNodes1 = getOutputProb(featSound);
-//                    setProbOut(outputNodes1); //Update the UI
+                    double[] outputNodes1 = getOutputProb(featSound);
+                    setProbOut(outputNodes1); //Update the UI
                 }
             }
         });

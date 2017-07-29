@@ -1,54 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.constraint.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@drawable/background">
 
-    <ListView
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/profileListView">
-    </ListView>
+        android:text="Profile"
+        android:id="@+id/profileTextView"
+        android:textSize="20sp"
+        android:textColor="#000000"
+        app:layout_constraintBottom_toTopOf="@+id/blackLine"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        android:layout_marginBottom="15dp"/>
 
-    <ListView
+    <View
+        android:id="@+id/blackLine"
+        android:layout_width="330dp"
+        android:layout_height="2dp"
+        android:background="#000000"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.1" />
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:id="@+id/mUserProfilePic"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/blackLine"
+        android:layout_marginTop="20dp"/>
+
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/notificationListView"
-        android:layout_below="@+id/profileListView">
-    </ListView>
+        android:id="@+id/userName"
+        android:textAlignment="center"
+        android:textSize="20sp"
+        android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mUserProfilePic"/>
 
-    <ListView
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/settingsListView"
-        android:layout_below="@+id/notificationListView">
-    </ListView>
+        android:id="@+id/userEmail"
+        android:textAlignment="center"
+        android:textColor="#828282"
+        android:textSize="15sp"
+        android:layout_marginTop="5dp"
+        android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userName"
+        />
 
-    <!--<de.hdodenhof.circleimageview.CircleImageView-->
-        <!--xmlns:app="http://schemas.android.com/apk/res-auto"-->
-        <!--android:id="@+id/profile_image"-->
-        <!--android:layout_width="96dp"-->
-        <!--android:layout_height="96dp"-->
-        <!--android:layout_below="@+id/settingsListView"-->
-        <!--app:civ_border_width="2dp"-->
-        <!--app:civ_border_color="#FF000000" />-->
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/myrect"
+        android:id="@+id/notifLayout"
+        android:elevation="10dp"
+        android:layout_marginRight="4dp"
+        android:layout_marginLeft="4dp"
+        android:layout_marginTop="7dp"
+        app:layout_constraintLeft_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userEmail">
 
-    <!--<ImageView-->
-        <!--android:id="@+id/imageView"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_above="@+id/textView"-->
-        <!--android:layout_alignLeft="@+id/textView"-->
-        <!--android:layout_alignStart="@+id/textView"-->
-        <!--android:layout_marginBottom="595dp"-->
-        <!--app:srcCompat="@android:drawable/btn_dropdown" />-->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/notificationText"
+            android:text="Notification"
+            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium" />
+
+        <ListView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/notificationListView"
+            android:layout_below="@+id/notificationText">
+
+        </ListView>
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/myrect"
+        android:id="@+id/soundLayout"
+        android:elevation="10dp"
+        android:layout_marginRight="4dp"
+        android:layout_marginLeft="4dp"
+        android:layout_marginTop="7dp"
+        app:layout_constraintLeft_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/notifLayout">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/soundTypeText"
+            android:text="Sound Types"
+            android:textAppearance="@android:style/TextAppearance.DeviceDefault.Medium" />
+
+        <ListView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/soundListView"
+            android:layout_below="@+id/soundTypeText">
+
+        </ListView>
+
+    </RelativeLayout>
 
     <Button
         android:id="@+id/signOutButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/settingsListView"
+        android:background="@drawable/border"
+        app:layout_constraintLeft_toRightOf="parent"
+        app:layout_constraintBottom_toTopOf="parent"
         android:layout_centerHorizontal="true"
         android:text="SignOut" />
 
@@ -56,8 +137,11 @@
         android:id="@+id/revokeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/signOutButton"
+        android:background="@drawable/border"
+        app:layout_constraintRight_toLeftOf="parent"
+        app:layout_constraintBottom_toTopOf="parent"
         android:layout_centerHorizontal="true"
         android:text="Revoke" />
 
-</RelativeLayout>
+
+</android.support.constraint.ConstraintLayout>

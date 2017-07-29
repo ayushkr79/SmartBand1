@@ -12,10 +12,10 @@ import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import java.io.InputStream;
@@ -80,35 +80,51 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     };
 
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
 
+        //TODO: Hardware Acceleration
+//        getWindow().setFlags(
+//                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+//                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+
 
         //Adding toolbar to the activity
 //        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 //        setSupportActionBar(toolbar);
+//        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 
         //Initializing the tablayout
         tabLayout = (TabLayout) findViewById(R.id.tabLayout);
 
-        //Adding the tabs using addTab() method
-        tabLayout.addTab(tabLayout.newTab().setText("Tab 1"));
-        tabLayout.addTab(tabLayout.newTab().setText("Tab 2"));
-        tabLayout.addTab(tabLayout.newTab().setText("Tab 3"));
-        tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
-
         //Initializing viewPager
         viewPager = (ViewPager) findViewById(R.id.pager);
+        tabLayout.setupWithViewPager(viewPager);
+
+        //Adding the tabs using addTab() method
+        tabLayout.addTab(tabLayout.newTab());
+        tabLayout.addTab(tabLayout.newTab());
+        tabLayout.addTab(tabLayout.newTab());
+        tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
         //Creating our pager adapter
         adapter = new Pager(getSupportFragmentManager(), tabLayout.getTabCount());
-
         //Adding adapter to pager
         viewPager.setAdapter(adapter);
 
+        tabLayout.getTabAt(0).setText("Chat");
+        tabLayout.getTabAt(1).setText("Sound");
+        tabLayout.getTabAt(2).setText("Settings");
+
         //Adding onTabSelectedListener to swipe views
-        tabLayout.setOnTabSelectedListener(this);
+//        tabLayout.setOnTabSelectedListener(this);
+        tabLayout.addOnTabSelectedListener(this);
 
         /**-------------**/
 
@@ -306,7 +322,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
         viewPager.setCurrentItem(tab.getPosition());
+        tabLayout.getTabAt(tab.getPosition()).select();
     }
+
 
     @Override
     public void onTabUnselected(TabLayout.Tab tab) {
@@ -333,4 +351,5 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         msg.setData(bundle);
         handler.sendMessage(msg);
     }
+
 }
