@@ -18,6 +18,10 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        renderscriptTargetApi 18
+        renderscriptSupportModeEnabled true
+
     }
     repositories {
         maven { url 'http://repo1.maven.org/maven2' }
@@ -33,6 +37,7 @@ android {
     }
     productFlavors {
     }
+    sourceSets { main { renderscript.srcDirs = ['src/main/rs', 'src/main/rs/'] } }
 }
 
 dependencies {
@@ -41,12 +46,11 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     //TODO: Changed the error to warning level
-    
+
 
     compile files('libs/jxl.jar')
     //    compile 'com.google.android.gms:play-services-analytics:11.0.1'
 
-    
     //    compile 'com.firebaseui:firebase-ui-storage:0.6.0'
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support:design:25.3.1'
@@ -60,5 +64,7 @@ dependencies {
     compile 'com.github.bumptech.glide:glide:4.0.0-RC1'
     compile 'com.android.support:support-v4:25.3.1'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.0.0-RC1'
+
+    compile 'org.apache.commons:commons-math3:3.6.1'
 }
 apply plugin: 'com.google.gms.google-services'
