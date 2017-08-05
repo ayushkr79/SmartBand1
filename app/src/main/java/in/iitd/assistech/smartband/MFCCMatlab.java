@@ -1,7 +1,10 @@
 package in.iitd.assistech.smartband;
 
+import android.content.res.Resources;
+import android.graphics.Matrix;
 import android.util.Log;
 import android.util.TimingLogger;
+import android.support.v8.renderscript.*;
 
 import static in.iitd.assistech.smartband.MainActivity.RECORDER_SAMPLERATE;
 import static in.iitd.assistech.smartband.MainProcessing.L;
@@ -29,6 +32,14 @@ public class MFCCMatlab {
     private double[][] FBE;
     private double[][] frames;
     private double[][] MAG;
+
+//    private ScriptC_fft fftScript;
+    private ScriptC_matrixMultiplication matrixMultiplication;
+    private ScriptC_fft fftScript;
+
+    protected Resources mResources;
+    protected RenderScript mRenderScript;
+    private Allocation mFFTAllocation;
 
     private double[] featSound;
 
@@ -106,6 +117,13 @@ public class MFCCMatlab {
             }
 
             Complex[] fft_temp = fft(temp);
+
+            /**---------------------------------------------**/
+            Type.Builder typeBuilder = new Type.Builder(mRenderScript, Element.F32_2(mRenderScript));
+            fftScript = new ScriptC_fft(mRenderScript, mResources, R.raw.fft);
+            mFFTAllocation = Allocation.createTyped(mRenderScript,typeBuilder.create());
+//            fftScript.invoke_runRestricted(fftScript, mAudioAllocation, mFFTAllocation);
+            /**---------------------------------------------**/
 
             for(int i=0; i<nfft; i++){
                 MAG[i][j] = fft_temp[i].abs();
@@ -317,7 +335,7 @@ public class MFCCMatlab {
     }
 
     /**CHECKED: No ERROR**/
-    public static Complex[] fft(Complex[] x) {
+    public Complex[] fft(Complex[] x) {
 
         int n = x.length;
         // base case
@@ -395,4 +413,6 @@ public class MFCCMatlab {
     public double[] getFeatSound() {
         return featSound;
     }
+
+    /**-+-------------------------------**/
 }
