@@ -14,22 +14,10 @@ import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.CheckedTextView;
-import android.widget.ImageView;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.Spinner;
-import android.widget.Switch;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 //import com.bumptech.glide.Glide;
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.annotation.GlideModule;
-import com.bumptech.glide.module.AppGlideModule;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.ConnectionResult;
@@ -39,25 +27,22 @@ import com.google.android.gms.common.api.Status;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-
 import de.hdodenhof.circleimageview.CircleImageView;
+
+import static com.facebook.FacebookSdk.getApplicationContext;
 
 public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiClient.OnConnectionFailedListener{
 
     public View view;
     private static final String TAG = "Tab3";
 
+
+    private ExpandableListAdapter notifListAdapter;
+    private ExpandableListAdapter soundListAdapter;
+    private ExpandableListView notifListView;
+    private ExpandableListView soundListView;
     static final String[] notificationListItems = {"Vibration", "Sound", "Flashlight", "Flash Screen"};
     static final String[] soundListItems = {"Vehicle Horn", "Dog Bark", "GunShot"};
-
-    private NotifListAdapter notifListAdapter;
-    private NotifListAdapter soundListAdapter;
 
     private CircleImageView userProfileImage;
     private TextView userName;
@@ -72,10 +57,10 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
     private String email;
     private Uri photoUrl;
 
+
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-
         boolean[] notifSwitchState = new boolean[notificationListItems.length];
         boolean[] soundSwitchState = new boolean[soundListItems.length];
 
@@ -130,43 +115,43 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
         updateUI();
 
         /**--------------------------------**/
+        notifListView = (ExpandableListView) view.findViewById(R.id.notificationListView);
+        soundListView = (ExpandableListView) view.findViewById(R.id.soundListView);
         if(savedInstanceState != null){
             boolean[] notifSwitchState = savedInstanceState.getBooleanArray("notifState");
             boolean[] soundSwitchState = savedInstanceState.getBooleanArray("soundState");
-            Log.e(TAG, notifSwitchState.toString());
+//            Log.e(TAG, notifSwitchState.toString());
             try{
-                notifListAdapter = new NotifListAdapter(getContext(), notificationListItems, notifSwitchState);
-                ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
+//                notifListAdapter = new NotifListAdapter(getContext(), notificationListItems, notifSwitchState);
+                notifListAdapter = new ExpandableListAdapter(getContext(), notificationListItems, "Notification", notifSwitchState);
+//                ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
                 notifListView.setAdapter(notifListAdapter);
 
-                soundListAdapter = new NotifListAdapter(getContext(), soundListItems, soundSwitchState);
-                ListView soundListView = (ListView) view.findViewById(R.id.soundListView);
+                soundListAdapter = new ExpandableListAdapter(getContext(), soundListItems, "Sound Types", soundSwitchState);
                 soundListView.setAdapter(soundListAdapter);
             }catch(Exception e){
                 Log.e(TAG, e.toString());
                 Toast.makeText(getContext(), e.toString(), Toast.LENGTH_SHORT).show();
             }
         } else{
-            notifListAdapter = new NotifListAdapter(getContext(), notificationListItems);
-            ListView notifListView = (ListView) view.findViewById(R.id.notificationListView);
+            boolean[] startNotifState = MainActivity.getStartNotifListState();
+            boolean[] startSoundState = MainActivity.getStartSoundListState();
+            notifListAdapter = new ExpandableListAdapter(getContext(), notificationListItems, "Notification", startNotifState);
             notifListView.setAdapter(notifListAdapter);
 
-            soundListAdapter = new NotifListAdapter(getContext(), soundListItems);
-            ListView soundListView = (ListView) view.findViewById(R.id.soundListView);
+            soundListAdapter = new ExpandableListAdapter(getContext(), soundListItems, "Sound Types", startSoundState);
             soundListView.setAdapter(soundListAdapter);
         }
+        /**----------------------------------------------**/
 
-        /*try{
-                for (int i=0; i<notificationListItems.length; i++){
-                    View rowview = notifListAdapter.getView(i, null, null);
-                    Switch swtc = (Switch) rowview.findViewById(R.id.notif_row_switch);
-                    swtc.setChecked(notifSwitchState[i]);
-                }
-                for (int i=0; i<soundListItems.length; i++){
-                    View rowview = soundListAdapter.getView(i, null, null);
-                    Switch swtc = (Switch) rowview.findViewById(R.id.notif_row_switch);
-                    swtc.setChecked(soundSwitchState[i]);
-                }*/
+        notifListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
+
+            @Override
+            public void onGroupExpand(int groupPosition) {
+                Toast.makeText(getApplicationContext(), " Expanded",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
         /**-------------------------------**/
 
         return view;
@@ -257,4 +242,22 @@ public class Tab3 extends Fragment implements View.OnClickListener, GoogleApiCli
         Log.e(TAG, "onConnectionFailed:" + connectionResult);
         Toast.makeText(getActivity(), "Google Play Services error.", Toast.LENGTH_SHORT).show();
     }
+
+    /**--------------------------------------------**/
+    public boolean[] getFinalNotifState(){
+        boolean[] notifSwitchState = new boolean[notificationListItems.length];
+        for (int i=0; i<notificationListItems.length; i++){
+            notifSwitchState[i] = notifListAdapter.getCheckedState(i);
+        }
+        return notifSwitchState;
+    }
+
+    public boolean[] getFinalSoundState(){
+        boolean[] soundSwitchState = new boolean[soundListItems.length];
+        for (int i=0; i<soundListItems.length; i++){
+            soundSwitchState[i] = notifListAdapter.getCheckedState(i);
+        }
+        return soundSwitchState;
+    }
+
 }

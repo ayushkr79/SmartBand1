@@ -1,6 +1,7 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.media.AudioFormat;
@@ -8,14 +9,18 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.InputStream;
@@ -24,6 +29,9 @@ import java.util.Arrays;
 import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
+
+import static in.iitd.assistech.smartband.Tab3.notificationListItems;
+import static in.iitd.assistech.smartband.Tab3.soundListItems;
 
 public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener,
        OnTabEvent{
@@ -65,6 +73,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     int BytesPerElement;
     public static short[] sData;
 
+    private static boolean[] startNotifListState;
+    private static boolean[] startSoundListState;
+
 
     static Handler handler = new Handler(){
         @Override
@@ -82,6 +93,64 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+//        SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
+//        SharedPreferences.Editor editor = app_preferences.edit();
+//        boolean[] notifState = getFinalNotifState();
+//        editor.putBoolean("Vibration", notifState[0]);
+//        editor.putBoolean("Sound", notifState[1]);
+//        editor.putBoolean("FlashLight", notifState[2]);
+//        editor.putBoolean("FlashScreen", notifState[3]);
+//        editor.commit();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        boolean[] notifState = new boolean[notificationListItems.length];
+        for (int i=0; i<notificationListItems.length; i++){
+            notifState[i] = app_preferences.getBoolean(notificationListItems[i], true);
+        }
+        boolean[] soundState =  new boolean[soundListItems.length];
+        for (int i=0; i<soundListItems.length; i++){
+            soundState[i] = app_preferences.getBoolean(soundListItems[i], true);
+        }
+
+        startNotifListState = notifState;
+        startSoundListState = soundState;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor editor = app_preferences.edit();
+        if(adapter.getInitialNotifListState() != null){
+            boolean[] notifState = adapter.getInitialNotifListState();
+            for (int i=0; i<notificationListItems.length; i++){
+                editor.putBoolean(notificationListItems[i], notifState[i]);
+            }
+            editor.commit();
+        }
+
+        if(adapter.getInitialSoundListState() != null){
+            boolean[] soundState = adapter.getInitialSoundListState();
+            for (int i=0; i<soundListItems.length; i++){
+                editor.putBoolean(soundListItems[i], soundState[i]);
+            }
+            editor.commit();
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
     }
 
     @Override
@@ -149,6 +218,9 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 
         bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
                 RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+
+        /**-------------------------------**/
+
     }
 
     @Override
@@ -256,6 +328,7 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
                 }
             }
         } catch (Exception e){
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -352,4 +425,11 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
         handler.sendMessage(msg);
     }
 
+    static boolean[] getStartNotifListState(){
+        return startNotifListState;
+    }
+
+    static boolean[] getStartSoundListState(){
+        return startSoundListState;
+    }
 }

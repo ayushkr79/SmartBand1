@@ -3,6 +3,7 @@ package in.iitd.assistech.smartband;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
+import android.util.Log;
 
 //Extending FragmentStatePagerAdapter
 public class Pager extends FragmentStatePagerAdapter {
@@ -47,5 +48,19 @@ public class Pager extends FragmentStatePagerAdapter {
 
     public void editTab2Text(double hornProb, double cryProb, double ambientProb){
         tab2.editValue(hornProb, cryProb, ambientProb);
+    }
+
+    public boolean[] getInitialNotifListState(){
+        if (tab3 != null){
+            return tab3.getFinalNotifState();
+        }
+        return null;
+    }
+
+    public boolean[] getInitialSoundListState(){
+        if (tab3 != null){
+            return tab3.getFinalSoundState();
+        }
+        return null;
     }
 }
