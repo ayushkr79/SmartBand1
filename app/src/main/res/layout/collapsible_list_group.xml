@@ -4,7 +4,7 @@ android:layout_width="fill_parent"
 android:layout_height="wrap_content"
 android:orientation="vertical"
 android:padding="8dp"
-android:background="#000000">
+android:background="@drawable/myrect2">
 
 
 <TextView
@@ -12,8 +12,8 @@ android:background="#000000">
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
     android:paddingLeft="?android:attr/expandableListPreferredItemPaddingLeft"
-    android:textSize="17dp"
+    android:textSize="25dp"
     android:text="Something"
-    android:textColor="#f9f93d" />
+    android:textColor="#000000" />
 
 </LinearLayout>

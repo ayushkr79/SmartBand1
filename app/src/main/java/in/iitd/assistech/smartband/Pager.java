@@ -46,8 +46,8 @@ public class Pager extends FragmentStatePagerAdapter {
         return tabCount;
     }
 
-    public void editTab2Text(double hornProb, double cryProb, double ambientProb){
-        tab2.editValue(hornProb, cryProb, ambientProb);
+    public void editTab2Text(double hornProb, double barkProb, double gunShotProb, double ambientProb, boolean[] notifState){
+        tab2.editValue(hornProb, barkProb, gunShotProb, ambientProb, notifState);
     }
 
     public boolean[] getInitialNotifListState(){

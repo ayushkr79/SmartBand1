@@ -1,6 +1,8 @@
 package in.iitd.assistech.smartband;
 
 import android.Manifest;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -10,9 +12,11 @@ import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PersistableBundle;
+import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
@@ -20,11 +24,14 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import jxl.Cell;
 import jxl.Sheet;
@@ -83,9 +90,11 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
             if(msg.getData().getInt("what") == PROB_MSG_HNDL){
                 //TODO create an instance of Tab2 fragment and call editValue()
                 double hornProb = msg.getData().getDouble("hornProb");
-                double gunShotProb = msg.getData().getDouble("gunShotProb");
-                double dogBarkProb = msg.getData().getDouble("dogBarkProb");
-                adapter.editTab2Text(hornProb, gunShotProb, dogBarkProb);
+                double barkProb = msg.getData().getDouble("dogBarkProb");
+                double gunShotProb = 0.0;//msg.getData().getDouble("gunShotProb");
+                double ambientProb = msg.getData().getDouble("ambientProb");
+                boolean[] notifState = adapter.getInitialNotifListState();
+                adapter.editTab2Text(hornProb, barkProb, gunShotProb, ambientProb, notifState);
             }
         }
     };
@@ -413,14 +422,16 @@ public class MainActivity extends AppCompatActivity implements TabLayout.OnTabSe
 //        adapter.editTab2Text(outProb[0], outProb[1], outProb[2]);
         double hornProb = (outProb[0]);
         double dogBarkProb = (outProb[1]);
-        double gunShotProb = (outProb[2]);
+//        double gunShotProb = (outProb[2]);
+        double ambientProb = (outProb[2]);
 
         final Message msg = new Message();
         final Bundle bundle = new Bundle();
         bundle.putInt("what", PROB_MSG_HNDL);
         bundle.putDouble("hornProb", hornProb);
         bundle.putDouble("dogBarkProb", dogBarkProb);
-        bundle.putDouble("gunShotProb", gunShotProb);
+//        bundle.putDouble("gunShotProb", gunShotProb);
+        bundle.putDouble("ambientProb", ambientProb);
         msg.setData(bundle);
         handler.sendMessage(msg);
     }

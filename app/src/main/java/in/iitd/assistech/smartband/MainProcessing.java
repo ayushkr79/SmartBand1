@@ -142,6 +142,7 @@ public class MainProcessing {
         for (int i = 0; i < outputNodes.length; i++) {
             outputNodes[i] = softmax(outputNodes[i], sum);
         }
+        Log.e(TAG, Integer.toString(outputNodes.length));
         return outputNodes;
     }
 
